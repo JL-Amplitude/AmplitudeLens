@@ -1,8 +1,20 @@
 # AmplitudeLens
-AI-powered product analytics discovery assistant
-Chrome extension to crawl a customer site and generate a proper tracking plan demo-wise
+AI-powered product analytics discovery assistant. Chrome extension to crawl a customer site and generate a proper tracking plan demo-wise.
+
+**What it does**
+
+1. **On any site**
+   - Infers product flows
+   - Suggests tracking plan
+   - Identifies growth opportunities
+2. **One-click export to demo narrative**
+
+**Stack:** Browser extension + Claude API + Amplitude MCP
+**Use case:** Live during discovery/demo
 
 ## Icons
+The extension uses the following icons:
+
 - `icon16` — pinned toolbar button
 - `icon32` — Windows taskbar / retina toolbar
 - `icon48` — Extensions management page

@@ -19,15 +19,9 @@
     const state = await chrome.storage.local.get([
       "amplitudeMcpServer",
       "useEuDataResidency",
-      "selectedClaudeModel",
-      "claudeApiKey"
+      "selectedClaudeModel"
     ]);
     const claudeConfig = globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG || {};
-    const apiKeyFromPopup = (state.claudeApiKey || "").trim();
-    globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG = {
-      ...claudeConfig,
-      apiKey: apiKeyFromPopup
-    };
     let amplitudeMcpServer = state.amplitudeMcpServer;
     if (
       amplitudeMcpServer !== "MCP_US_SERVER_REGION" &&

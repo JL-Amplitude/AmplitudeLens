@@ -1,7 +1,6 @@
 globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG = {
   apiUrl: "https://api.anthropic.com/v1/messages",
   anthropicVersion: "2023-06-01",
-  apiKey: "",
   user: "amplitude-lens-extension",
   role: "product-analytics-solution-engineer",
   defaultModel: "claude-sonnet-4-6",

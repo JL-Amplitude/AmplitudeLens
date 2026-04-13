@@ -1,14 +1,25 @@
 (function () {
-  function getClaudeConfig() {
-    const config = globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG || {};
+  const CLAUDE_API_KEY_SESSION_KEY = "claudeApiKey";
 
-    if (!config.apiKey || !String(config.apiKey).trim()) {
+  async function getClaudeConfigForRequest() {
+    const base = globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG || {};
+    const sessionData = await chrome.storage.session.get(CLAUDE_API_KEY_SESSION_KEY);
+    const apiKey = String(sessionData[CLAUDE_API_KEY_SESSION_KEY] || "").trim();
+
+    if (!apiKey) {
       throw new Error(
-        "Claude API key is missing. Open the extension popup → Claude Configuration and enter your key."
+        "Claude API key is missing. Open the extension popup → Lens Configuration and enter your key."
       );
     }
 
-    return config;
+    return {
+      apiUrl: base.apiUrl,
+      anthropicVersion: base.anthropicVersion,
+      defaultModel: base.defaultModel,
+      user: base.user,
+      role: base.role,
+      apiKey
+    };
   }
 
   function extractClaudeText(responseJson) {
@@ -30,7 +41,7 @@
     maxTokens = 2200,
     temperature = 0.2
   }) {
-    const config = getClaudeConfig();
+    const config = await getClaudeConfigForRequest();
 
     const response = await fetch(config.apiUrl, {
       method: "POST",

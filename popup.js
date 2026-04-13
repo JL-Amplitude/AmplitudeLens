@@ -74,25 +74,36 @@ function setMcpRadiosFromKey(key) {
 }
 
 async function loadPreferences() {
-  const saved = await chrome.storage.local.get([
-    AMPLITUDE_MCP_STORAGE_KEY,
-    LEGACY_EU_RESIDENCY_KEY,
-    CLAUDE_MODEL_STORAGE_KEY,
-    CLAUDE_API_KEY_STORAGE_KEY
+  const [savedLocal, savedSession] = await Promise.all([
+    chrome.storage.local.get([
+      AMPLITUDE_MCP_STORAGE_KEY,
+      LEGACY_EU_RESIDENCY_KEY,
+      CLAUDE_MODEL_STORAGE_KEY,
+      CLAUDE_API_KEY_STORAGE_KEY
+    ]),
+    chrome.storage.session.get([CLAUDE_API_KEY_STORAGE_KEY])
   ]);
 
-  let mcpKey = saved[AMPLITUDE_MCP_STORAGE_KEY];
+  let mcpKey = savedLocal[AMPLITUDE_MCP_STORAGE_KEY];
   if (mcpKey !== "MCP_US_SERVER_REGION" && mcpKey !== "MCP_EU_SERVER_REGION") {
-    mcpKey = saved[LEGACY_EU_RESIDENCY_KEY]
+    mcpKey = savedLocal[LEGACY_EU_RESIDENCY_KEY]
       ? "MCP_EU_SERVER_REGION"
       : "MCP_US_SERVER_REGION";
     await chrome.storage.local.set({ [AMPLITUDE_MCP_STORAGE_KEY]: mcpKey });
   }
   setMcpRadiosFromKey(mcpKey);
 
-  claudeApiKeyInput.value = saved[CLAUDE_API_KEY_STORAGE_KEY] || "";
+  let apiKeyValue = savedSession[CLAUDE_API_KEY_STORAGE_KEY] || "";
+  if (!apiKeyValue && savedLocal[CLAUDE_API_KEY_STORAGE_KEY]) {
+    apiKeyValue = savedLocal[CLAUDE_API_KEY_STORAGE_KEY];
+    await chrome.storage.session.set({
+      [CLAUDE_API_KEY_STORAGE_KEY]: apiKeyValue
+    });
+    await chrome.storage.local.remove(CLAUDE_API_KEY_STORAGE_KEY);
+  }
+  claudeApiKeyInput.value = apiKeyValue;
 
-  const savedModel = saved[CLAUDE_MODEL_STORAGE_KEY] || defaultClaudeModel;
+  const savedModel = savedLocal[CLAUDE_MODEL_STORAGE_KEY] || defaultClaudeModel;
   const ids = new Set(availableModels.map((m) => m.id));
   claudeModelSelect.value = ids.has(savedModel) ? savedModel : defaultClaudeModel;
 
@@ -126,7 +137,7 @@ claudeApiKeyInput.addEventListener("input", () => {
   updateCrawlUiState();
   clearTimeout(apiKeyPersistTimer);
   apiKeyPersistTimer = setTimeout(async () => {
-    await chrome.storage.local.set({
+    await chrome.storage.session.set({
       [CLAUDE_API_KEY_STORAGE_KEY]: claudeApiKeyInput.value.trim()
     });
   }, 400);
@@ -134,7 +145,7 @@ claudeApiKeyInput.addEventListener("input", () => {
 
 claudeApiKeyInput.addEventListener("blur", async () => {
   clearTimeout(apiKeyPersistTimer);
-  await chrome.storage.local.set({
+  await chrome.storage.session.set({
     [CLAUDE_API_KEY_STORAGE_KEY]: claudeApiKeyInput.value.trim()
   });
 });
@@ -151,7 +162,7 @@ analyzeButton.addEventListener("click", async () => {
 
   console.log("[Amplitude Lens] Lens configuration (Crawl click)", {
     claudeModel: selectedClaudeModel,
-    claudeApiKey: apiKey,
+    claudeApiKeyConfigured: Boolean(apiKey),
     amplitudeMcpRegion: amplitudeMcpServer
   });
 
@@ -160,11 +171,15 @@ analyzeButton.addEventListener("click", async () => {
   analyzeButton.textContent = "Crawling...";
   resultsEl.innerHTML = '<p class="status">Running crawler on current page...</p>';
 
-  await chrome.storage.local.set({
-    [AMPLITUDE_MCP_STORAGE_KEY]: amplitudeMcpServer,
-    [CLAUDE_MODEL_STORAGE_KEY]: selectedClaudeModel,
-    [CLAUDE_API_KEY_STORAGE_KEY]: apiKey
-  });
+  await Promise.all([
+    chrome.storage.local.set({
+      [AMPLITUDE_MCP_STORAGE_KEY]: amplitudeMcpServer,
+      [CLAUDE_MODEL_STORAGE_KEY]: selectedClaudeModel
+    }),
+    chrome.storage.session.set({
+      [CLAUDE_API_KEY_STORAGE_KEY]: apiKey
+    })
+  ]);
 
   try {
     await chrome.scripting.executeScript({
