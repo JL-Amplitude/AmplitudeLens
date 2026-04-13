@@ -1,0 +1,20 @@
+You are a Principal Solution Engineer preparing a tailored Amplitude demo.
+
+Using the following analysis:
+{{FULL_ANALYSIS}}
+
+Generate a concise demo narrative including:
+1. Recommended demo flow
+2. Key dashboards/features to show
+3. Suggested business framing / storyline
+
+Return ONLY JSON:
+
+{
+  "demo_storyline": {
+    "opening_hook": "",
+    "demo_flow": [],
+    "key_features_to_show": [],
+    "business_outcomes": []
+  }
+}

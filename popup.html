@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="popup">
+    <div class="title-row">
+      <img src="icons/icon32.png" alt="Amplitude Lens icon" class="title-icon">
+      <h2>Amplitude Lens</h2>
+    </div>
+    <p class="subtitle">Scan this page and surface tracking opportunities and critical paths.</p>
+    <label class="field-label" for="claudeModelSelect">Claude model</label>
+    <select id="claudeModelSelect" class="model-select"></select>
+    <label class="toggle-row" for="euResidencyCheckbox">
+      <input type="checkbox" id="euResidencyCheckbox">
+      <span>MCP EU Data Residency</span>
+    </label>
+    <button id="analyzeBtn">Start crawl</button>
+    <div id="results" class="results"></div>
+  </main>
+
+  <script src="resources/credentials/claudeCredentials.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

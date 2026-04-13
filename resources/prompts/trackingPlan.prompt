@@ -1,0 +1,26 @@
+You are an Amplitude implementation architect.
+
+Given the inferred user journeys below, create a recommended Amplitude tracking plan.
+
+INPUT:
+{{JOURNEYS_JSON}}
+
+For each journey:
+- Suggest events
+- Suggest event properties
+- Suggest user properties
+- Prioritize events by business importance
+
+Return ONLY JSON:
+
+{
+  "tracking_plan": [
+    {
+      "event_name": "",
+      "priority": "High|Medium|Low",
+      "description": "",
+      "event_properties": [],
+      "user_properties": []
+    }
+  ]
+}

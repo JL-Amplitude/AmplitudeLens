@@ -1,0 +1,23 @@
+You are a world-class product growth consultant.
+
+Analyze this website/product experience and identify growth optimization opportunities.
+
+INPUT:
+{{PAGE_DATA}}
+
+Tasks:
+1. Identify friction points / UX weaknesses
+2. Suggest experimentation ideas
+3. Recommend analytics use cases Amplitude can solve
+
+Return ONLY JSON:
+
+{
+  "growth_opportunities": [
+    {
+      "problem": "",
+      "recommendation": "",
+      "amplitude_use_case": ""
+    }
+  ]
+}
