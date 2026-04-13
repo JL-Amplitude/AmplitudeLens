@@ -149,6 +149,12 @@ analyzeButton.addEventListener("click", async () => {
   const selectedClaudeModel = claudeModelSelect.value || defaultClaudeModel;
   const apiKey = claudeApiKeyInput.value.trim();
 
+  console.log("[Amplitude Lens] Lens configuration (Crawl click)", {
+    claudeModel: selectedClaudeModel,
+    claudeApiKey: apiKey,
+    amplitudeMcpRegion: amplitudeMcpServer
+  });
+
   crawlInProgress = true;
   analyzeButton.disabled = true;
   analyzeButton.textContent = "Crawling...";

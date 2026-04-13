@@ -28,14 +28,33 @@
     promptTemplate,
     variables
   }) {
-    const resolvedPrompt = applyPromptVariables(promptTemplate, variables);
+    console.log(
+      `[Amplitude Lens] Orchestration: starting prompt step "${promptName}" (model: ${model || "default"})`
+    );
 
-    const rawResult = await globalThis.AMPLITUDE_LENS_CLAUDE.executePrompt({
-      prompt: resolvedPrompt,
-      model
-    });
+    try {
+      const resolvedPrompt = applyPromptVariables(promptTemplate, variables);
 
-    return tryParseJsonValue(rawResult);
+      const rawResult = await globalThis.AMPLITUDE_LENS_CLAUDE.executePrompt({
+        prompt: resolvedPrompt,
+        model
+      });
+
+      const parsed = tryParseJsonValue(rawResult);
+
+      console.log(
+        `[Amplitude Lens] Orchestration: finished prompt step "${promptName}"`,
+        parsed
+      );
+
+      return parsed;
+    } catch (error) {
+      console.error(
+        `[Amplitude Lens] Orchestration: prompt step "${promptName}" failed`,
+        error
+      );
+      throw error;
+    }
   }
 
   async function runAmplitudeLensPromptOrchestration({ pageData, model }) {

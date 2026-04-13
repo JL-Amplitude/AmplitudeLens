@@ -13,6 +13,8 @@
       forms: [...document.querySelectorAll("form")].length
     };
 
+    console.log("[Amplitude Lens] Page data to crawl (DOM extract)", pageData);
+
     const context = globalThis.AMPLITUDE_LENS_CONTEXT || {};
     const state = await chrome.storage.local.get([
       "amplitudeMcpServer",
@@ -42,15 +44,27 @@
     const selectedClaudeModel =
       state.selectedClaudeModel || claudeConfig.defaultModel || "claude-sonnet-4-6";
 
+    const crawledPagePayload = {
+      ...pageData,
+      region,
+      amplitudeMcpServer,
+      mcpServerUrl
+    };
+
+    console.log(
+      "[Amplitude Lens] About to call orchestrator with crawled page payload",
+      crawledPagePayload
+    );
+
     const analysis = await globalThis.AMPLITUDE_LENS_ORCHESTRATOR.run({
-      pageData: {
-        ...pageData,
-        region,
-        amplitudeMcpServer,
-        mcpServerUrl
-      },
+      pageData: crawledPagePayload,
       model: selectedClaudeModel
     });
+
+    console.log(
+      "[Amplitude Lens] Orchestrator finished; sending analysis to Chrome runtime",
+      analysis
+    );
 
     chrome.runtime.sendMessage({
       type: "PAGE_ANALYSIS",
