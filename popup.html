@@ -9,18 +9,40 @@
       <img src="icons/icon32.png" alt="Amplitude Lens icon" class="title-icon">
       <h2>Amplitude Lens</h2>
     </div>
-    <p class="subtitle">Scan this page and surface tracking opportunities and critical paths.</p>
-    <label class="field-label" for="claudeModelSelect">Claude model</label>
-    <select id="claudeModelSelect" class="model-select"></select>
-    <label class="toggle-row" for="euResidencyCheckbox">
-      <input type="checkbox" id="euResidencyCheckbox">
-      <span>MCP EU Data Residency</span>
-    </label>
-    <button id="analyzeBtn">Start crawl</button>
-    <div id="results" class="results"></div>
+
+    <div class="tab-bar" role="tablist" aria-label="Popup sections">
+      <button type="button" class="tab" role="tab" id="tabCrawl" aria-selected="true" aria-controls="panelCrawl" data-tab="crawl">Site Crawling</button>
+      <button type="button" class="tab" role="tab" id="tabConfig" aria-selected="false" aria-controls="panelConfig" data-tab="config">Lens Configuration</button>
+    </div>
+
+    <section id="panelCrawl" class="tab-panel" role="tabpanel" aria-labelledby="tabCrawl">
+      <p class="subtitle tab-panel-lead">Run analysis on the active tab. Results appear below.</p>
+      <p id="crawlBlockedHint" class="hint hint--warn" hidden>Complete <strong>Lens Configuration</strong> (model and API key) to enable crawling.</p>
+      <button type="button" id="analyzeBtn" disabled>Start crawl</button>
+      <div id="results" class="results"></div>
+    </section>
+
+    <section id="panelConfig" class="tab-panel" role="tabpanel" aria-labelledby="tabConfig" hidden>
+      <p class="subtitle tab-panel-lead">Claude and Amplitude MCP settings. Stored locally in this browser.</p>
+      <label class="field-label" for="claudeModelSelect">Claude model</label>
+      <select id="claudeModelSelect" class="model-select" required></select>
+      <label class="field-label" for="claudeApiKeyInput">Claude API key</label>
+      <input type="password" id="claudeApiKeyInput" class="text-input" autocomplete="off" spellcheck="false" placeholder="sk-ant-api03-…" required>
+      <p class="field-label field-label--static" id="amplitudeMcpLabel">Amplitude MCP</p>
+      <div class="radio-group" role="radiogroup" aria-labelledby="amplitudeMcpLabel">
+        <label class="radio-row">
+          <input type="radio" name="amplitudeMcp" id="mcpUs" value="MCP_US_SERVER_REGION" checked>
+          <span>MCP US Data Residency</span>
+        </label>
+        <label class="radio-row">
+          <input type="radio" name="amplitudeMcp" id="mcpEu" value="MCP_EU_SERVER_REGION">
+          <span>MCP EU Data Residency</span>
+        </label>
+      </div>
+    </section>
   </main>
 
-  <script src="resources/credentials/claudeCredentials.js"></script>
+  <script src="resources/claude/claudeCredentials.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
