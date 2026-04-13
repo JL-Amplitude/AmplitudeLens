@@ -10,6 +10,7 @@ AI-powered product analytics discovery assistant. Chrome extension to crawl a cu
 2. **One-click export to demo narrative**
 
 **Stack:** Browser extension + Claude API + Amplitude MCP
+
 **Use case:** Live during discovery/demo
 
 ## Icons
