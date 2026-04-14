@@ -16,6 +16,9 @@ const tabCrawl = document.getElementById("tabCrawl");
 const tabConfig = document.getElementById("tabConfig");
 const panelCrawl = document.getElementById("panelCrawl");
 const panelConfig = document.getElementById("panelConfig");
+const updateStackTechBtn = document.getElementById("updateStackTechBtn");
+const updateStackHint = document.getElementById("updateStackHint");
+const stackTechLastUpdated = document.getElementById("stackTechLastUpdated");
 
 const AMPLITUDE_MCP_STORAGE_KEY = "amplitudeMcpServer";
 const LEGACY_EU_RESIDENCY_KEY = "useEuDataResidency";
@@ -98,6 +101,37 @@ function renderCrawlResult(data) {
   crawlResultsEl.innerHTML = `<pre>${JSON.stringify(crawlPayload, null, 2)}</pre>`;
 }
 
+function formatGeneratedAt(isoDateString) {
+  if (!isoDateString) {
+    return "unknown";
+  }
+  const parsed = new Date(isoDateString);
+  if (Number.isNaN(parsed.getTime())) {
+    return "unknown";
+  }
+  return parsed.toLocaleString();
+}
+
+async function loadStackTechnologiesMetadata() {
+  try {
+    const url = chrome.runtime.getURL("resources/enthec/technologies.json");
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Could not load technologies metadata");
+    }
+
+    const payload = await response.json();
+    const generatedAt = formatGeneratedAt(payload.generatedAt);
+    const count = payload.technologyCount || "unknown";
+
+    stackTechLastUpdated.textContent =
+      `Stack technologies last updated: ${generatedAt} (${count} technologies)`;
+  } catch (_error) {
+    stackTechLastUpdated.textContent =
+      "Stack technologies last updated: unavailable";
+  }
+}
+
 function renderTechResult(data) {
   const techPayload = data && data.techStackDiscovery
     ? data.techStackDiscovery
@@ -167,6 +201,7 @@ renderClaudeModels();
 setActiveTab("crawl");
 setResultTab("crawl");
 loadPreferences();
+loadStackTechnologiesMetadata();
 
 tabCrawl.addEventListener("click", () => setActiveTab("crawl"));
 tabConfig.addEventListener("click", () => setActiveTab("config"));
@@ -319,4 +354,11 @@ downloadPromptBtn.addEventListener("click", () => {
   a.download = "amplitude-architecture-prompt.txt";
   a.click();
   URL.revokeObjectURL(url);
+});
+
+updateStackTechBtn.addEventListener("click", async () => {
+  const command = "node scripts/update-stack-technologies.mjs";
+  await navigator.clipboard.writeText(command);
+  updateStackHint.textContent =
+    `Command copied: ${command}. Run it in the project root, then reload the extension.`;
 });

@@ -22,7 +22,7 @@
     },
     "web_accessible_resources": [
       {
-        "resources": ["resources/prompts/*.prompt"],
+        "resources": ["resources/prompts/*.prompt", "resources/enthec/*.json"],
         "matches": ["<all_urls>"]
       }
     ],

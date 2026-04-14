@@ -48,6 +48,18 @@ The prompts should not run independently. They are chained logically because lat
    ↓
 4. **Demo Storyline Prompt**
 
+## Architecture stack discovery
+AmplitudeLens enriches tech stack discovery with Enthec WebAppAnalyzer technology fingerprints bundled inside the extension.
+
+- **Pattern source**  
+  Technology definitions are fetched from `enthec/webappanalyzer` and merged at build time by `scripts/update-stack-technologies.mjs`.
+- **Bundled for reliability**  
+  The merged dataset is saved as `resources/enthec/technologies.json`, so detection runs offline and avoids runtime CORS/network issues.
+- **Runtime matching**  
+  During discovery mode, the extension evaluates Enthec patterns against the live page URL, response headers, script sources, DOM HTML, meta tags, and runtime globals.
+- **Consolidated output**  
+  Matches are grouped into a stack fingerprint and used to generate the architecture prompt that can be copied or downloaded for Glean.
+
 ## FAQ
 
 ### Why Use a Backend Instead of Calling Claude Directly?

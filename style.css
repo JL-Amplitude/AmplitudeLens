@@ -72,6 +72,10 @@ body {
   color: var(--amp-muted);
 }
 
+.hint--meta {
+  margin-top: -6px;
+}
+
 .hint--warn {
   color: #92400e;
   background: #fffbeb;

@@ -1,4 +1,6 @@
 (async function () {
+  let enthecTechnologiesPromise = null;
+
   function sendRuntimeMessage(message) {
     return new Promise((resolve) => {
       chrome.runtime.sendMessage(message, (response) => {
@@ -10,6 +12,179 @@
         resolve(response || null);
       });
     });
+  }
+
+  async function loadEnthecTechnologies() {
+    if (!enthecTechnologiesPromise) {
+      const url = chrome.runtime.getURL("resources/enthec/technologies.json");
+      enthecTechnologiesPromise = fetch(url)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Could not load resources/enthec/technologies.json");
+          }
+          return response.json();
+        })
+        .then((payload) => payload.technologies || {});
+    }
+    return enthecTechnologiesPromise;
+  }
+
+  function parsePatternValue(value) {
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => parsePatternValue(item));
+    }
+    if (typeof value === "object" && value !== null) {
+      if ("pattern" in value) {
+        return parsePatternValue(value.pattern);
+      }
+      return [];
+    }
+    if (typeof value !== "string") {
+      return [];
+    }
+
+    if (value.includes("\\;")) {
+      return [value.split("\\;")[0]];
+    }
+    if (value.includes(";confidence:") || value.includes(";version:")) {
+      return [value.split(";")[0]];
+    }
+
+    return [value];
+  }
+
+  function regexMatch(candidate, pattern) {
+    try {
+      return new RegExp(pattern, "i").test(candidate);
+    } catch (_error) {
+      return candidate.toLowerCase().includes(String(pattern).toLowerCase());
+    }
+  }
+
+  function matchesAnyPattern(candidate, patternValue) {
+    const patterns = parsePatternValue(patternValue);
+    if (!patterns.length) {
+      return false;
+    }
+
+    return patterns.some((pattern) => regexMatch(candidate, pattern));
+  }
+
+  function getGlobalValue(path) {
+    const parts = path.split(".");
+    let value = window;
+    for (const part of parts) {
+      if (value == null || !(part in value)) {
+        return undefined;
+      }
+      value = value[part];
+    }
+    return value;
+  }
+
+  function categorizeTechnologyName(name, categories) {
+    const lower = name.toLowerCase();
+
+    if (
+      /analytics|amplitude|google analytics|gtm|mixpanel|segment|posthog|heap|hotjar|matomo/.test(lower)
+    ) {
+      categories.analytics.add(name);
+      return;
+    }
+
+    if (
+      /react|next\.js|nextjs|vue|angular|nuxt|svelte|ember|jquery|gatsby/.test(lower)
+    ) {
+      categories.frontend.add(name);
+      return;
+    }
+
+    if (/nginx|apache|express|node\.js|ruby|php|laravel|django|flask|spring|rails/.test(lower)) {
+      categories.backend.add(name);
+      return;
+    }
+
+    if (/cloudflare|fastly|cloudfront|vercel|netlify|aws|azure|gcp|akamai/.test(lower)) {
+      categories.infrastructure.add(name);
+      return;
+    }
+
+    categories.otherTools.add(name);
+  }
+
+  async function detectWithEnthec(pageUrl, headerEntries) {
+    const technologies = await loadEnthecTechnologies();
+    const detected = [];
+
+    const scripts = [...document.querySelectorAll("script[src]")].map((script) =>
+      (script.src || "").toLowerCase()
+    );
+    const html = document.documentElement ? document.documentElement.outerHTML : "";
+    const metaMap = {};
+    [...document.querySelectorAll("meta[name],meta[property]")].forEach((meta) => {
+      const key = (meta.getAttribute("name") || meta.getAttribute("property") || "").toLowerCase();
+      if (!key) {
+        return;
+      }
+      metaMap[key] = meta.getAttribute("content") || "";
+    });
+
+    const mergedHeaders = {};
+    headerEntries.forEach((entry) => {
+      const headers = entry.headers || {};
+      Object.entries(headers).forEach(([name, value]) => {
+        mergedHeaders[name.toLowerCase()] = String(value || "");
+      });
+    });
+
+    for (const [name, definition] of Object.entries(technologies)) {
+      let matched = false;
+
+      if (!matched && definition.url && matchesAnyPattern(pageUrl, definition.url)) {
+        matched = true;
+      }
+
+      if (!matched && definition.scriptSrc) {
+        matched = scripts.some((src) => matchesAnyPattern(src, definition.scriptSrc));
+      }
+
+      if (!matched && definition.html) {
+        matched = matchesAnyPattern(html, definition.html);
+      }
+
+      if (!matched && definition.headers && typeof definition.headers === "object") {
+        matched = Object.entries(definition.headers).some(([headerName, headerPattern]) => {
+          const headerValue = mergedHeaders[headerName.toLowerCase()];
+          return Boolean(headerValue && matchesAnyPattern(headerValue, headerPattern));
+        });
+      }
+
+      if (!matched && definition.meta && typeof definition.meta === "object") {
+        matched = Object.entries(definition.meta).some(([metaName, metaPattern]) => {
+          const metaValue = metaMap[metaName.toLowerCase()];
+          return Boolean(metaValue && matchesAnyPattern(metaValue, metaPattern));
+        });
+      }
+
+      if (!matched && definition.js && typeof definition.js === "object") {
+        matched = Object.entries(definition.js).some(([globalPath, jsPattern]) => {
+          const globalValue = getGlobalValue(globalPath);
+          if (globalValue === undefined) {
+            return false;
+          }
+          if (!jsPattern) {
+            return true;
+          }
+          return matchesAnyPattern(String(globalValue), jsPattern);
+        });
+      }
+
+      if (matched) {
+        detected.push(name);
+      }
+    }
+
+    return detected;
   }
 
   function detectFromHeaders(entries) {
@@ -207,7 +382,21 @@
 
     const headerSignals = detectFromHeaders(headerEntries);
     const clientSignals = detectClientTech();
+    const enthecMatches = await detectWithEnthec(pageUrl, headerEntries);
+    enthecMatches.forEach((technology) => {
+      categorizeTechnologyName(technology, {
+        frontend: clientSignals.frontend,
+        analytics: clientSignals.analytics,
+        backend: headerSignals.backend,
+        infrastructure: headerSignals.infrastructure,
+        otherTools: clientSignals.otherTools
+      });
+    });
+    clientSignals.hints.push(
+      `Enthec pattern matches: ${enthecMatches.length}`
+    );
     const fingerprint = buildStackFingerprint(headerSignals, clientSignals);
+    fingerprint.patternMatches = enthecMatches;
     const architecturePrompt = await buildArchitecturePrompt(fingerprint, pageUrl);
 
     return {
