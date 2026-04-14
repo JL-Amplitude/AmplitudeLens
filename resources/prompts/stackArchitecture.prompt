@@ -1,0 +1,17 @@
+Create an architecture diagram showing {{STACK_LIST}} and where Amplitude fits in the data flow.
+Include a downloadable diagram (SVG/PNG) with the name of the company and the URL of the page, using the official icons and logos for the components when possible instead of text.
+Include a talk track for the diagram that would be used to explain the architecture to the customer.
+
+Context:
+- URL: {{PAGE_URL}}
+- Frontend: {{FRONTEND}}
+- Backend: {{BACKEND}}
+- Infrastructure/CDN: {{INFRASTRUCTURE_CDN}}
+- Analytics tools detected: {{ANALYTICS}}
+- Authenticated page state likely: {{AUTHENTICATED_STATE}}
+
+Please include:
+- Client-side events and key app interactions
+- Data collection path into Amplitude
+- Upstream/downstream systems and integration points
+- Recommended place for Amplitude MCP in the architecture

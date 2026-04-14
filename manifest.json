@@ -3,7 +3,7 @@
     "name": "Amplitude Lens",
     "version": "1.0",
     "description": "AI-powered product analytics discovery assistant",
-    "permissions": ["activeTab", "scripting", "storage"],
+    "permissions": ["activeTab", "scripting", "storage", "webRequest"],
     "host_permissions": ["<all_urls>"],
     "icons": {
         "16": "icons/icon16.png",

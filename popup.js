@@ -1,9 +1,17 @@
 const analyzeButton = document.getElementById("analyzeBtn");
-const resultsEl = document.getElementById("results");
+const crawlResultsEl = document.getElementById("crawlResults");
+const techResultsEl = document.getElementById("techResults");
+const developmentModeCheckbox = document.getElementById("developmentMode");
+const resultTabCrawl = document.getElementById("resultTabCrawl");
+const resultTabTech = document.getElementById("resultTabTech");
 const mcpRadios = document.querySelectorAll('input[name="amplitudeMcp"]');
 const claudeModelSelect = document.getElementById("claudeModelSelect");
 const claudeApiKeyInput = document.getElementById("claudeApiKeyInput");
 const crawlBlockedHint = document.getElementById("crawlBlockedHint");
+const architecturePromptSection = document.getElementById("architecturePromptSection");
+const architecturePromptText = document.getElementById("architecturePromptText");
+const copyPromptBtn = document.getElementById("copyPromptBtn");
+const downloadPromptBtn = document.getElementById("downloadPromptBtn");
 const tabCrawl = document.getElementById("tabCrawl");
 const tabConfig = document.getElementById("tabConfig");
 const panelCrawl = document.getElementById("panelCrawl");
@@ -13,6 +21,7 @@ const AMPLITUDE_MCP_STORAGE_KEY = "amplitudeMcpServer";
 const LEGACY_EU_RESIDENCY_KEY = "useEuDataResidency";
 const CLAUDE_MODEL_STORAGE_KEY = "selectedClaudeModel";
 const CLAUDE_API_KEY_STORAGE_KEY = "claudeApiKey";
+const DEVELOPMENT_MODE_KEY = "developmentMode";
 
 const claudeConfig = globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG || {};
 const availableModels = claudeConfig.availableModels || [
@@ -24,7 +33,6 @@ let crawlInProgress = false;
 
 function renderClaudeModels() {
   claudeModelSelect.innerHTML = "";
-
   availableModels.forEach((model) => {
     const option = document.createElement("option");
     option.value = model.id;
@@ -40,9 +48,21 @@ function isClaudeConfigComplete() {
   return apiKeyOk && modelOk;
 }
 
+function setResultTab(which) {
+  const isCrawl = which === "crawl";
+  resultTabCrawl.classList.toggle("result-tab--active", isCrawl);
+  resultTabTech.classList.toggle("result-tab--active", !isCrawl);
+  resultTabCrawl.setAttribute("aria-selected", String(isCrawl));
+  resultTabTech.setAttribute("aria-selected", String(!isCrawl));
+  crawlResultsEl.hidden = !isCrawl;
+  techResultsEl.hidden = isCrawl;
+}
+
 function updateCrawlUiState() {
-  const complete = isClaudeConfigComplete();
-  crawlBlockedHint.hidden = complete;
+  const developmentMode = developmentModeCheckbox.checked;
+  const complete = developmentMode || isClaudeConfigComplete();
+
+  crawlBlockedHint.hidden = developmentMode || complete;
   if (!crawlInProgress) {
     analyzeButton.disabled = !complete;
   }
@@ -58,19 +78,50 @@ function setActiveTab(which) {
   panelConfig.hidden = isCrawl;
 }
 
-tabCrawl.addEventListener("click", () => setActiveTab("crawl"));
-tabConfig.addEventListener("click", () => setActiveTab("config"));
-
 function getSelectedMcpServerKey() {
   const checked = document.querySelector('input[name="amplitudeMcp"]:checked');
   return checked ? checked.value : "MCP_US_SERVER_REGION";
 }
 
 function setMcpRadiosFromKey(key) {
-  const valid = key === "MCP_EU_SERVER_REGION" ? "MCP_EU_SERVER_REGION" : "MCP_US_SERVER_REGION";
+  const valid =
+    key === "MCP_EU_SERVER_REGION"
+      ? "MCP_EU_SERVER_REGION"
+      : "MCP_US_SERVER_REGION";
   mcpRadios.forEach((radio) => {
     radio.checked = radio.value === valid;
   });
+}
+
+function renderCrawlResult(data) {
+  const crawlPayload = data && data.crawlAnalysis ? data.crawlAnalysis : data;
+  crawlResultsEl.innerHTML = `<pre>${JSON.stringify(crawlPayload, null, 2)}</pre>`;
+}
+
+function renderTechResult(data) {
+  const techPayload = data && data.techStackDiscovery
+    ? data.techStackDiscovery
+    : data && data.stackFingerprint
+      ? { stackFingerprint: data.stackFingerprint }
+      : null;
+
+  if (!techPayload) {
+    techResultsEl.innerHTML = '<p class="status">No tech stack discovery result for this run.</p>';
+    architecturePromptSection.hidden = true;
+    architecturePromptText.value = "";
+    return;
+  }
+
+  techResultsEl.innerHTML = `<pre>${JSON.stringify(techPayload, null, 2)}</pre>`;
+
+  const prompt = data.architecturePrompt || techPayload.architecturePrompt || "";
+  if (prompt) {
+    architecturePromptSection.hidden = false;
+    architecturePromptText.value = prompt;
+  } else {
+    architecturePromptSection.hidden = true;
+    architecturePromptText.value = "";
+  }
 }
 
 async function loadPreferences() {
@@ -79,7 +130,8 @@ async function loadPreferences() {
       AMPLITUDE_MCP_STORAGE_KEY,
       LEGACY_EU_RESIDENCY_KEY,
       CLAUDE_MODEL_STORAGE_KEY,
-      CLAUDE_API_KEY_STORAGE_KEY
+      CLAUDE_API_KEY_STORAGE_KEY,
+      DEVELOPMENT_MODE_KEY
     ]),
     chrome.storage.session.get([CLAUDE_API_KEY_STORAGE_KEY])
   ]);
@@ -106,13 +158,20 @@ async function loadPreferences() {
   const savedModel = savedLocal[CLAUDE_MODEL_STORAGE_KEY] || defaultClaudeModel;
   const ids = new Set(availableModels.map((m) => m.id));
   claudeModelSelect.value = ids.has(savedModel) ? savedModel : defaultClaudeModel;
+  developmentModeCheckbox.checked = Boolean(savedLocal[DEVELOPMENT_MODE_KEY]);
 
   updateCrawlUiState();
 }
 
 renderClaudeModels();
 setActiveTab("crawl");
+setResultTab("crawl");
 loadPreferences();
+
+tabCrawl.addEventListener("click", () => setActiveTab("crawl"));
+tabConfig.addEventListener("click", () => setActiveTab("config"));
+resultTabCrawl.addEventListener("click", () => setResultTab("crawl"));
+resultTabTech.addEventListener("click", () => setResultTab("tech"));
 
 mcpRadios.forEach((radio) => {
   radio.addEventListener("change", async () => {
@@ -122,6 +181,13 @@ mcpRadios.forEach((radio) => {
       });
     }
   });
+});
+
+developmentModeCheckbox.addEventListener("change", async () => {
+  await chrome.storage.local.set({
+    [DEVELOPMENT_MODE_KEY]: developmentModeCheckbox.checked
+  });
+  updateCrawlUiState();
 });
 
 claudeModelSelect.addEventListener("change", async () => {
@@ -151,7 +217,8 @@ claudeApiKeyInput.addEventListener("blur", async () => {
 });
 
 analyzeButton.addEventListener("click", async () => {
-  if (!isClaudeConfigComplete()) {
+  const developmentMode = developmentModeCheckbox.checked;
+  if (!developmentMode && !isClaudeConfigComplete()) {
     return;
   }
 
@@ -161,6 +228,7 @@ analyzeButton.addEventListener("click", async () => {
   const apiKey = claudeApiKeyInput.value.trim();
 
   console.log("[Amplitude Lens] Lens configuration (Crawl click)", {
+    developmentMode,
     claudeModel: selectedClaudeModel,
     claudeApiKeyConfigured: Boolean(apiKey),
     amplitudeMcpRegion: amplitudeMcpServer
@@ -168,13 +236,20 @@ analyzeButton.addEventListener("click", async () => {
 
   crawlInProgress = true;
   analyzeButton.disabled = true;
-  analyzeButton.textContent = "Crawling...";
-  resultsEl.innerHTML = '<p class="status">Running crawler on current page...</p>';
+  analyzeButton.textContent = developmentMode
+    ? "Running tech discovery..."
+    : "Crawling...";
+  crawlResultsEl.innerHTML = '<p class="status">Running crawl analysis...</p>';
+  techResultsEl.innerHTML = '<p class="status">Waiting for tech stack discovery...</p>';
+  setResultTab(developmentMode ? "tech" : "crawl");
+  architecturePromptSection.hidden = true;
+  architecturePromptText.value = "";
 
   await Promise.all([
     chrome.storage.local.set({
       [AMPLITUDE_MCP_STORAGE_KEY]: amplitudeMcpServer,
-      [CLAUDE_MODEL_STORAGE_KEY]: selectedClaudeModel
+      [CLAUDE_MODEL_STORAGE_KEY]: selectedClaudeModel,
+      [DEVELOPMENT_MODE_KEY]: developmentMode
     }),
     chrome.storage.session.set({
       [CLAUDE_API_KEY_STORAGE_KEY]: apiKey
@@ -194,7 +269,8 @@ analyzeButton.addEventListener("click", async () => {
       ]
     });
   } catch (error) {
-    resultsEl.innerHTML = `<p class="status">Crawler failed: ${error.message}</p>`;
+    crawlResultsEl.innerHTML = `<p class="status">Execution failed: ${error.message}</p>`;
+    techResultsEl.innerHTML = `<p class="status">Execution failed: ${error.message}</p>`;
     crawlInProgress = false;
     analyzeButton.textContent = "Start crawl";
     updateCrawlUiState();
@@ -202,10 +278,45 @@ analyzeButton.addEventListener("click", async () => {
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === "PAGE_ANALYSIS") {
-    resultsEl.innerHTML = `<pre>${JSON.stringify(message.data, null, 2)}</pre>`;
-    crawlInProgress = false;
-    analyzeButton.textContent = "Start crawl";
-    updateCrawlUiState();
+  if (message.type !== "PAGE_ANALYSIS") {
+    return;
   }
+
+  renderCrawlResult(message.data);
+  renderTechResult(message.data);
+  if (message.data && message.data.techStackDiscovery) {
+    setResultTab("tech");
+  }
+
+  crawlInProgress = false;
+  analyzeButton.textContent = "Start crawl";
+  updateCrawlUiState();
+});
+
+copyPromptBtn.addEventListener("click", async () => {
+  const prompt = architecturePromptText.value.trim();
+  if (!prompt) {
+    return;
+  }
+
+  await navigator.clipboard.writeText(prompt);
+  copyPromptBtn.textContent = "Copied";
+  setTimeout(() => {
+    copyPromptBtn.textContent = "Copy prompt";
+  }, 1200);
+});
+
+downloadPromptBtn.addEventListener("click", () => {
+  const prompt = architecturePromptText.value.trim();
+  if (!prompt) {
+    return;
+  }
+
+  const blob = new Blob([prompt], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "amplitude-architecture-prompt.txt";
+  a.click();
+  URL.revokeObjectURL(url);
 });

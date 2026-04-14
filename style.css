@@ -102,6 +102,53 @@ body {
   gap: 8px;
 }
 
+.dev-toggle {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--amp-muted);
+}
+
+.dev-toggle input {
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 999px;
+  border: 1px solid var(--amp-border);
+  background: #d5d9e8;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.dev-toggle input::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.dev-toggle input:checked {
+  background: var(--amp-primary);
+  border-color: var(--amp-primary);
+}
+
+.dev-toggle input:checked::before {
+  transform: translateX(16px);
+}
+
 .title-icon {
   width: 24px;
   height: 24px;
@@ -217,6 +264,72 @@ h2 {
   border-radius: 10px;
   background: var(--amp-surface);
   padding: 10px;
+}
+
+.result-tabs {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.result-tab {
+  flex: 1;
+  border: 1px solid var(--amp-border);
+  border-radius: 8px;
+  background: #f8faff;
+  color: var(--amp-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 8px;
+  cursor: pointer;
+}
+
+.result-tab--active {
+  color: var(--amp-primary);
+  background: #ecf0ff;
+}
+
+.prompt-section {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--amp-border);
+  border-radius: 10px;
+  background: var(--amp-surface);
+}
+
+.prompt-text {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  border: 1px solid var(--amp-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--amp-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #fbfcff;
+}
+
+.prompt-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.secondary-btn {
+  flex: 1;
+  border: 1px solid var(--amp-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--amp-text);
+  background: #f8faff;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  background: #eef2ff;
 }
 
 .status {

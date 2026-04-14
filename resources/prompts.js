@@ -3,7 +3,8 @@
     productAnalysis: "resources/prompts/productAnalysis.prompt",
     trackingPlan: "resources/prompts/trackingPlan.prompt",
     growthOps: "resources/prompts/growthOps.prompt",
-    demoStoryline: "resources/prompts/demoStoryline.prompt"
+    demoStoryline: "resources/prompts/demoStoryline.prompt",
+    stackArchitecture: "resources/prompts/stackArchitecture.prompt"
   };
 
   async function loadPromptFile(relativePath) {
