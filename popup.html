@@ -40,25 +40,34 @@
     </section>
 
     <section id="panelConfig" class="tab-panel" role="tabpanel" aria-labelledby="tabConfig" hidden>
-      <p class="subtitle tab-panel-lead">Claude and Amplitude MCP settings. Stored locally in this browser.</p>
-      <label class="field-label" for="claudeModelSelect">Claude model</label>
-      <select id="claudeModelSelect" class="model-select" required></select>
-      <label class="field-label" for="claudeApiKeyInput">Claude API key</label>
-      <input type="password" id="claudeApiKeyInput" class="text-input" autocomplete="off" spellcheck="false" placeholder="sk-ant-api03-…" required>
-      <p class="field-label field-label--static" id="amplitudeMcpLabel">Amplitude MCP</p>
-      <div class="radio-group" role="radiogroup" aria-labelledby="amplitudeMcpLabel">
-        <label class="radio-row">
-          <input type="radio" name="amplitudeMcp" id="mcpUs" value="MCP_US_SERVER_REGION" checked>
-          <span>MCP US Data Residency</span>
-        </label>
-        <label class="radio-row">
-          <input type="radio" name="amplitudeMcp" id="mcpEu" value="MCP_EU_SERVER_REGION">
-          <span>MCP EU Data Residency</span>
-        </label>
-      </div>
-      <button type="button" id="updateStackTechBtn" class="secondary-btn">Update stack technologies</button>
-      <p id="updateStackHint" class="hint">Runs the local build command and requires reloading the extension afterwards.</p>
-      <p id="stackTechLastUpdated" class="hint hint--meta">Stack technologies last updated: loading...</p>
+      <section class="config-card">
+        <label class="field-label" for="claudeModelSelect">Claude model</label>
+        <select id="claudeModelSelect" class="model-select" required></select>
+        <label class="field-label" for="claudeApiKeyInput">Claude API key</label>
+        <input type="password" id="claudeApiKeyInput" class="text-input" autocomplete="off" spellcheck="false" placeholder="sk-ant-api03-…" required>
+      </section>
+
+      <section class="config-card">
+        <p class="field-label field-label--static" id="amplitudeMcpLabel">Amplitude MCP</p>
+        <div class="radio-group" role="radiogroup" aria-labelledby="amplitudeMcpLabel">
+          <label class="radio-row">
+            <input type="radio" name="amplitudeMcp" id="mcpUs" value="MCP_US_SERVER_REGION" checked>
+            <span>MCP US Data Residency</span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="amplitudeMcp" id="mcpEu" value="MCP_EU_SERVER_REGION">
+            <span>MCP EU Data Residency</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="config-card stack-tech-block">
+        <label class="field-label" for="updateStackTechBtn">Technology fingerprints</label>
+        <p class="hint hint--stack-intro">Refresh the local Enthec fingerprint dataset used by stack discovery.</p>
+        <p id="updateStackHint" class="hint hint--stack-subcopy">Runs the local build command and requires reloading the extension afterwards.</p>
+        <button type="button" id="updateStackTechBtn" class="primary-btn primary-btn--compact">Update stack technologies</button>
+        <p id="stackTechLastUpdated" class="hint hint--meta">Stack technologies last updated: loading...</p>
+      </section>
     </section>
   </main>
 
