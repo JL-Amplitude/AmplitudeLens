@@ -2,6 +2,7 @@ const analyzeButton = document.getElementById("analyzeBtn");
 const crawlResultsEl = document.getElementById("crawlResults");
 const techResultsEl = document.getElementById("techResults");
 const developmentModeCheckbox = document.getElementById("developmentMode");
+const discoveryOutputSection = document.getElementById("discoveryOutputSection");
 const resultTabCrawl = document.getElementById("resultTabCrawl");
 const resultTabTech = document.getElementById("resultTabTech");
 const mcpRadios = document.querySelectorAll('input[name="amplitudeMcp"]');
@@ -12,6 +13,7 @@ const architecturePromptSection = document.getElementById("architecturePromptSec
 const architecturePromptText = document.getElementById("architecturePromptText");
 const copyPromptBtn = document.getElementById("copyPromptBtn");
 const downloadPromptBtn = document.getElementById("downloadPromptBtn");
+const sendToGleanBtn = document.getElementById("sendToGleanBtn");
 const tabCrawl = document.getElementById("tabCrawl");
 const tabConfig = document.getElementById("tabConfig");
 const panelCrawl = document.getElementById("panelCrawl");
@@ -59,6 +61,10 @@ function setResultTab(which) {
   resultTabTech.setAttribute("aria-selected", String(!isCrawl));
   crawlResultsEl.hidden = !isCrawl;
   techResultsEl.hidden = isCrawl;
+}
+
+function setDiscoveryOutputVisible(isVisible) {
+  discoveryOutputSection.hidden = !isVisible;
 }
 
 function updateCrawlUiState() {
@@ -200,6 +206,7 @@ async function loadPreferences() {
 renderClaudeModels();
 setActiveTab("crawl");
 setResultTab("crawl");
+setDiscoveryOutputVisible(false);
 loadPreferences();
 loadStackTechnologiesMetadata();
 
@@ -274,6 +281,7 @@ analyzeButton.addEventListener("click", async () => {
   analyzeButton.textContent = developmentMode
     ? "Running tech discovery..."
     : "Crawling...";
+  setDiscoveryOutputVisible(false);
   crawlResultsEl.innerHTML = '<p class="status">Running crawl analysis...</p>';
   techResultsEl.innerHTML = '<p class="status">Waiting for tech stack discovery...</p>';
   setResultTab(developmentMode ? "tech" : "crawl");
@@ -304,10 +312,11 @@ analyzeButton.addEventListener("click", async () => {
       ]
     });
   } catch (error) {
+    setDiscoveryOutputVisible(true);
     crawlResultsEl.innerHTML = `<p class="status">Execution failed: ${error.message}</p>`;
     techResultsEl.innerHTML = `<p class="status">Execution failed: ${error.message}</p>`;
     crawlInProgress = false;
-    analyzeButton.textContent = "Start crawl";
+    analyzeButton.textContent = "Start Discovery";
     updateCrawlUiState();
   }
 });
@@ -319,12 +328,13 @@ chrome.runtime.onMessage.addListener((message) => {
 
   renderCrawlResult(message.data);
   renderTechResult(message.data);
+  setDiscoveryOutputVisible(true);
   if (message.data && message.data.techStackDiscovery) {
     setResultTab("tech");
   }
 
   crawlInProgress = false;
-  analyzeButton.textContent = "Start crawl";
+  analyzeButton.textContent = "Start Discovery";
   updateCrawlUiState();
 });
 
@@ -354,6 +364,142 @@ downloadPromptBtn.addEventListener("click", () => {
   a.download = "amplitude-architecture-prompt.txt";
   a.click();
   URL.revokeObjectURL(url);
+});
+
+function waitForTabComplete(tabId, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      reject(new Error("Timed out waiting for Glean tab to load"));
+    }, timeoutMs);
+
+    function listener(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === "complete") {
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
+sendToGleanBtn.addEventListener("click", async () => {
+  const prompt = architecturePromptText.value.trim();
+  if (!prompt) {
+    return;
+  }
+
+  console.log("[Amplitude Lens] Send to Glean - button clicked");
+  console.log("[Amplitude Lens] Send to Glean - prompt payload", prompt);
+  console.log("[Amplitude Lens] Send to Glean - prompt length", prompt.length);
+
+  try {
+    sendToGleanBtn.disabled = true;
+    sendToGleanBtn.textContent = "Opening Glean...";
+
+    const tab = await chrome.tabs.create({
+      url: "https://app.glean.com/chat",
+      active: false
+    });
+
+    await waitForTabComplete(tab.id);
+
+    sendToGleanBtn.textContent = "Injecting prompt...";
+
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async (promptText) => {
+        const selectors = [
+          '[aria-label="Explore a topic…"]',
+          '.ql-editor[contenteditable="true"]',
+          '[data-placeholder="Explore a topic…"]',
+          'div[contenteditable="true"]'
+        ];
+
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        const escapeHtml = (value) =>
+          value
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;");
+
+        const waitForElement = (selector, timeout = 8000) =>
+          new Promise((resolve, reject) => {
+            const intervalId = setInterval(() => {
+              const el = document.querySelector(selector);
+              if (el) {
+                clearInterval(intervalId);
+                clearTimeout(timeoutId);
+                resolve(el);
+              }
+            }, 200);
+
+            const timeoutId = setTimeout(() => {
+              clearInterval(intervalId);
+              reject(new Error(`Element not found for selector: ${selector}`));
+            }, timeout);
+          });
+
+        let editor = null;
+        for (const selector of selectors) {
+          try {
+            editor = await waitForElement(selector, 5000);
+            break;
+          } catch (_error) {
+            // Try next selector
+          }
+        }
+
+        if (!editor) {
+          return { ok: false, reason: "Glean editor not found" };
+        }
+
+        editor.focus();
+        const html = promptText
+          .split("\n")
+          .map((line) => `<p>${escapeHtml(line) || "<br>"}</p>`)
+          .join("");
+        editor.innerHTML = html;
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
+
+        await sleep(300);
+        editor.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Enter",
+            code: "Enter",
+            keyCode: 13,
+            which: 13,
+            bubbles: true
+          })
+        );
+
+        return { ok: true };
+      },
+      args: [prompt]
+    });
+
+    if (!result || !result.ok) {
+      throw new Error(result && result.reason ? result.reason : "Could not inject prompt");
+    }
+
+    console.log("[Amplitude Lens] Send to Glean - injection success", result);
+
+    sendToGleanBtn.textContent = "Sent to Glean";
+    setTimeout(() => {
+      sendToGleanBtn.textContent = "Send to Glean";
+      sendToGleanBtn.disabled = false;
+    }, 1400);
+  } catch (error) {
+    console.error("[Amplitude Lens] Send to Glean - injection failed", {
+      error: error.message,
+      prompt
+    });
+    updateStackHint.textContent = `Send to Glean failed: ${error.message}`;
+    sendToGleanBtn.textContent = "Send to Glean";
+    sendToGleanBtn.disabled = false;
+  }
 });
 
 updateStackTechBtn.addEventListener("click", async () => {
