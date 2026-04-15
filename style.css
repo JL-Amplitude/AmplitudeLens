@@ -71,6 +71,28 @@ body {
   display: none !important;
 }
 
+.config-tab-bar {
+  display: flex;
+  gap: 6px;
+}
+
+.config-tab {
+  flex: 1;
+  border: 1px solid var(--amp-border);
+  border-radius: 8px;
+  background: #f8faff;
+  color: var(--amp-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 8px;
+  cursor: pointer;
+}
+
+.config-tab--active {
+  color: var(--amp-primary);
+  background: #ecf0ff;
+}
+
 .config-card {
   border: 1px solid var(--amp-muted);
   border-radius: 10px;

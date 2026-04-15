@@ -18,6 +18,12 @@ const tabCrawl = document.getElementById("tabCrawl");
 const tabConfig = document.getElementById("tabConfig");
 const panelCrawl = document.getElementById("panelCrawl");
 const panelConfig = document.getElementById("panelConfig");
+const configTabClaude = document.getElementById("configTabClaude");
+const configTabMcp = document.getElementById("configTabMcp");
+const configTabTech = document.getElementById("configTabTech");
+const configPanelClaude = document.getElementById("configPanelClaude");
+const configPanelMcp = document.getElementById("configPanelMcp");
+const configPanelTech = document.getElementById("configPanelTech");
 const updateStackTechBtn = document.getElementById("updateStackTechBtn");
 const updateStackHint = document.getElementById("updateStackHint");
 const stackTechLastUpdated = document.getElementById("stackTechLastUpdated");
@@ -85,6 +91,23 @@ function setActiveTab(which) {
   tabConfig.classList.toggle("tab--active", !isCrawl);
   panelCrawl.hidden = !isCrawl;
   panelConfig.hidden = isCrawl;
+}
+
+function setConfigTab(which) {
+  const isClaude = which === "claude";
+  const isMcp = which === "mcp";
+  const isTech = which === "tech";
+
+  configTabClaude.classList.toggle("config-tab--active", isClaude);
+  configTabMcp.classList.toggle("config-tab--active", isMcp);
+  configTabTech.classList.toggle("config-tab--active", isTech);
+  configTabClaude.setAttribute("aria-selected", String(isClaude));
+  configTabMcp.setAttribute("aria-selected", String(isMcp));
+  configTabTech.setAttribute("aria-selected", String(isTech));
+
+  configPanelClaude.hidden = !isClaude;
+  configPanelMcp.hidden = !isMcp;
+  configPanelTech.hidden = !isTech;
 }
 
 function getSelectedMcpServerKey() {
@@ -205,6 +228,7 @@ async function loadPreferences() {
 
 renderClaudeModels();
 setActiveTab("crawl");
+setConfigTab("claude");
 setResultTab("crawl");
 setDiscoveryOutputVisible(false);
 loadPreferences();
@@ -212,6 +236,9 @@ loadStackTechnologiesMetadata();
 
 tabCrawl.addEventListener("click", () => setActiveTab("crawl"));
 tabConfig.addEventListener("click", () => setActiveTab("config"));
+configTabClaude.addEventListener("click", () => setConfigTab("claude"));
+configTabMcp.addEventListener("click", () => setConfigTab("mcp"));
+configTabTech.addEventListener("click", () => setConfigTab("tech"));
 resultTabCrawl.addEventListener("click", () => setResultTab("crawl"));
 resultTabTech.addEventListener("click", () => setResultTab("tech"));
 

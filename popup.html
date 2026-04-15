@@ -43,14 +43,20 @@
     </section>
 
     <section id="panelConfig" class="tab-panel" role="tabpanel" aria-labelledby="tabConfig" hidden>
-      <section class="config-card">
+      <div class="config-tab-bar" role="tablist" aria-label="Configuration sections">
+        <button type="button" class="config-tab config-tab--active" id="configTabClaude" aria-selected="true">Claude</button>
+        <button type="button" class="config-tab" id="configTabMcp" aria-selected="false">Amplitude MCP</button>
+        <button type="button" class="config-tab" id="configTabTech" aria-selected="false">Fingerprints</button>
+      </div>
+
+      <section class="config-card" id="configPanelClaude">
         <label class="field-label" for="claudeModelSelect">Claude model</label>
         <select id="claudeModelSelect" class="model-select" required></select>
         <label class="field-label" for="claudeApiKeyInput">Claude API key</label>
         <input type="password" id="claudeApiKeyInput" class="text-input" autocomplete="off" spellcheck="false" placeholder="sk-ant-api03-…" required>
       </section>
 
-      <section class="config-card">
+      <section class="config-card" id="configPanelMcp" hidden>
         <p class="field-label field-label--static" id="amplitudeMcpLabel">Amplitude MCP</p>
         <div class="radio-group" role="radiogroup" aria-labelledby="amplitudeMcpLabel">
           <label class="radio-row">
@@ -64,7 +70,7 @@
         </div>
       </section>
 
-      <section class="config-card stack-tech-block">
+      <section class="config-card stack-tech-block" id="configPanelTech" hidden>
         <label class="field-label" for="updateStackTechBtn">Technology fingerprints</label>
         <p class="hint hint--stack-intro">Refresh the local Enthec fingerprint dataset used by stack discovery.</p>
         <p id="updateStackHint" class="hint hint--stack-subcopy">Runs the local build command and requires reloading the extension afterwards.</p>
