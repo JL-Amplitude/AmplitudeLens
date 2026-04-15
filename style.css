@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  width: 380px;
+  width: 456px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   background: linear-gradient(180deg, #eef2ff 0%, var(--amp-bg) 100%);
   color: var(--amp-text);
@@ -386,7 +386,7 @@ h2 {
 }
 
 .results {
-  margin-top: 14px;
+  margin-top: 0;
   max-height: 280px;
   overflow: auto;
   border: 1px solid var(--amp-border);
@@ -397,6 +397,14 @@ h2 {
 
 .result-tabs {
   margin-top: 10px;
+  margin-bottom: -1px;
+  display: flex;
+  gap: 6px;
+}
+
+.tech-detail-tabs {
+  margin-top: 10px;
+  margin-bottom: -1px;
   display: flex;
   gap: 6px;
 }
@@ -411,19 +419,32 @@ h2 {
   font-weight: 600;
   padding: 7px 8px;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
 }
 
 .result-tab--active {
   color: var(--amp-primary);
-  background: #ecf0ff;
+  background: var(--amp-surface);
+  border-bottom-color: var(--amp-surface);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  z-index: 2;
 }
 
 .prompt-section {
-  margin-top: 12px;
+  margin-top: 0;
   padding: 10px;
   border: 1px solid var(--amp-border);
   border-radius: 10px;
   background: var(--amp-surface);
+}
+
+.result-tabs + .results,
+.tech-detail-tabs + .results,
+.tech-detail-tabs + .prompt-section {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .prompt-text {

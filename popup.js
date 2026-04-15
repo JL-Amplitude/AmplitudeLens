@@ -1,6 +1,10 @@
 const analyzeButton = document.getElementById("analyzeBtn");
 const crawlResultsEl = document.getElementById("crawlResults");
+const techSummarySection = document.getElementById("techSummarySection");
 const techResultsEl = document.getElementById("techResults");
+const techDetailTabs = document.getElementById("techDetailTabs");
+const techDetailTabJson = document.getElementById("techDetailTabJson");
+const techDetailTabPrompt = document.getElementById("techDetailTabPrompt");
 const discoveryModeSection = document.getElementById("discoveryModeSection");
 const crawlModeRadios = document.querySelectorAll('input[name="crawlMode"]');
 const providedCsvSection = document.getElementById("providedCsvSection");
@@ -73,7 +77,17 @@ function setResultTab(which) {
   resultTabCrawl.setAttribute("aria-selected", String(isCrawl));
   resultTabTech.setAttribute("aria-selected", String(!isCrawl));
   crawlResultsEl.hidden = !isCrawl;
-  techResultsEl.hidden = isCrawl;
+  techSummarySection.hidden = isCrawl;
+}
+
+function setTechDetailTab(which) {
+  const isJson = which === "json";
+  techDetailTabJson.classList.toggle("result-tab--active", isJson);
+  techDetailTabPrompt.classList.toggle("result-tab--active", !isJson);
+  techDetailTabJson.setAttribute("aria-selected", String(isJson));
+  techDetailTabPrompt.setAttribute("aria-selected", String(!isJson));
+  techResultsEl.hidden = !isJson;
+  architecturePromptSection.hidden = isJson;
 }
 
 function setDiscoveryOutputVisible(isVisible) {
@@ -197,6 +211,8 @@ function renderTechResult(data) {
 
   if (!techPayload) {
     techResultsEl.innerHTML = '<p class="status">No tech stack discovery result for this run.</p>';
+    techDetailTabs.hidden = true;
+    setTechDetailTab("json");
     architecturePromptSection.hidden = true;
     architecturePromptText.value = "";
     return;
@@ -206,9 +222,12 @@ function renderTechResult(data) {
 
   const prompt = data.architecturePrompt || techPayload.architecturePrompt || "";
   if (prompt) {
-    architecturePromptSection.hidden = false;
+    techDetailTabs.hidden = false;
     architecturePromptText.value = prompt;
+    setTechDetailTab("json");
   } else {
+    techDetailTabs.hidden = true;
+    setTechDetailTab("json");
     architecturePromptSection.hidden = true;
     architecturePromptText.value = "";
   }
@@ -273,6 +292,8 @@ configTabMcp.addEventListener("click", () => setConfigTab("mcp"));
 configTabTech.addEventListener("click", () => setConfigTab("tech"));
 resultTabCrawl.addEventListener("click", () => setResultTab("crawl"));
 resultTabTech.addEventListener("click", () => setResultTab("tech"));
+techDetailTabJson.addEventListener("click", () => setTechDetailTab("json"));
+techDetailTabPrompt.addEventListener("click", () => setTechDetailTab("prompt"));
 
 mcpRadios.forEach((radio) => {
   radio.addEventListener("change", async () => {

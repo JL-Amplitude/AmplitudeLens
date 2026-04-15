@@ -52,19 +52,25 @@
       <button type="button" id="analyzeBtn" disabled>Start Discovery</button>
       <section id="discoveryOutputSection" hidden>
         <div class="result-tabs" role="tablist" aria-label="Result sections">
-          <button type="button" class="result-tab result-tab--active" id="resultTabCrawl" aria-selected="true">Crawl Results</button>
+          <button type="button" class="result-tab result-tab--active" id="resultTabCrawl" aria-selected="true">Growth Opportunities</button>
           <button type="button" class="result-tab" id="resultTabTech" aria-selected="false">Tech Stack Summary</button>
         </div>
         <div id="crawlResults" class="results"></div>
-        <div id="techResults" class="results" hidden></div>
-        <section id="architecturePromptSection" class="prompt-section" hidden>
-          <p class="field-label field-label--static">Glean Prompt</p>
-          <textarea id="architecturePromptText" class="prompt-text" readonly></textarea>
-          <div class="prompt-actions">
-            <button type="button" id="copyPromptBtn" class="secondary-btn">Copy prompt</button>
-            <button type="button" id="downloadPromptBtn" class="secondary-btn">Download prompt</button>
-            <button type="button" id="sendToGleanBtn" class="secondary-btn">Send to Glean</button>
+        <section id="techSummarySection" hidden>
+          <div id="techDetailTabs" class="tech-detail-tabs" role="tablist" aria-label="Tech summary details" hidden>
+            <button type="button" class="result-tab result-tab--active" id="techDetailTabJson" aria-selected="true">JSON</button>
+            <button type="button" class="result-tab" id="techDetailTabPrompt" aria-selected="false">Glean Prompt</button>
           </div>
+          <div id="techResults" class="results"></div>
+          <section id="architecturePromptSection" class="prompt-section" hidden>
+            <p class="field-label field-label--static">Glean Prompt</p>
+            <textarea id="architecturePromptText" class="prompt-text" readonly></textarea>
+            <div class="prompt-actions">
+              <button type="button" id="copyPromptBtn" class="secondary-btn">Copy prompt</button>
+              <button type="button" id="downloadPromptBtn" class="secondary-btn">Download prompt</button>
+              <button type="button" id="sendToGleanBtn" class="secondary-btn">Send to Glean</button>
+            </div>
+          </section>
         </section>
       </section>
     </section>
