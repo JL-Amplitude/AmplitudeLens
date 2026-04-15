@@ -3,6 +3,9 @@
     productAnalysis: "resources/prompts/productAnalysis.prompt",
     trackingPlan: "resources/prompts/trackingPlan.prompt",
     growthOps: "resources/prompts/growthOps.prompt",
+    agcQuick: "resources/prompts/amplitude-growth-consultant/agc-quick.prompt",
+    agcDeep: "resources/prompts/amplitude-growth-consultant/agc-deep.prompt",
+    agcProvided: "resources/prompts/amplitude-growth-consultant/agc-provided.prompt",
     demoStoryline: "resources/prompts/demoStoryline.prompt",
     stackArchitecture: "resources/prompts/stackArchitecture.prompt"
   };

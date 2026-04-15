@@ -1,6 +1,11 @@
 const analyzeButton = document.getElementById("analyzeBtn");
 const crawlResultsEl = document.getElementById("crawlResults");
 const techResultsEl = document.getElementById("techResults");
+const discoveryModeSection = document.getElementById("discoveryModeSection");
+const crawlModeRadios = document.querySelectorAll('input[name="crawlMode"]');
+const providedCsvSection = document.getElementById("providedCsvSection");
+const providedCsvInput = document.getElementById("providedCsvInput");
+const providedCsvFile = document.getElementById("providedCsvFile");
 const developmentModeCheckbox = document.getElementById("developmentMode");
 const discoveryOutputSection = document.getElementById("discoveryOutputSection");
 const resultTabCrawl = document.getElementById("resultTabCrawl");
@@ -33,6 +38,8 @@ const LEGACY_EU_RESIDENCY_KEY = "useEuDataResidency";
 const CLAUDE_MODEL_STORAGE_KEY = "selectedClaudeModel";
 const CLAUDE_API_KEY_STORAGE_KEY = "claudeApiKey";
 const DEVELOPMENT_MODE_KEY = "developmentMode";
+const CRAWL_MODE_STORAGE_KEY = "crawlMode";
+const PROVIDED_TAXONOMY_CSV_STORAGE_KEY = "providedTaxonomyCsv";
 
 const claudeConfig = globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG || {};
 const availableModels = claudeConfig.availableModels || [
@@ -76,6 +83,8 @@ function setDiscoveryOutputVisible(isVisible) {
 function updateCrawlUiState() {
   const developmentMode = developmentModeCheckbox.checked;
   const complete = developmentMode || isClaudeConfigComplete();
+  discoveryModeSection.hidden = developmentMode;
+  updateProvidedCsvVisibility();
 
   crawlBlockedHint.hidden = developmentMode || complete;
   if (!crawlInProgress) {
@@ -123,6 +132,24 @@ function setMcpRadiosFromKey(key) {
   mcpRadios.forEach((radio) => {
     radio.checked = radio.value === valid;
   });
+}
+
+function getSelectedCrawlMode() {
+  const checked = document.querySelector('input[name="crawlMode"]:checked');
+  return checked ? checked.value : "quick";
+}
+
+function setSelectedCrawlMode(mode) {
+  const normalized = mode === "deep" || mode === "provided" ? mode : "quick";
+  crawlModeRadios.forEach((radio) => {
+    radio.checked = radio.value === normalized;
+  });
+}
+
+function updateProvidedCsvVisibility() {
+  const developmentMode = developmentModeCheckbox.checked;
+  providedCsvSection.hidden =
+    developmentMode || getSelectedCrawlMode() !== "provided";
 }
 
 function renderCrawlResult(data) {
@@ -194,7 +221,9 @@ async function loadPreferences() {
       LEGACY_EU_RESIDENCY_KEY,
       CLAUDE_MODEL_STORAGE_KEY,
       CLAUDE_API_KEY_STORAGE_KEY,
-      DEVELOPMENT_MODE_KEY
+      DEVELOPMENT_MODE_KEY,
+      CRAWL_MODE_STORAGE_KEY,
+      PROVIDED_TAXONOMY_CSV_STORAGE_KEY
     ]),
     chrome.storage.session.get([CLAUDE_API_KEY_STORAGE_KEY])
   ]);
@@ -222,6 +251,9 @@ async function loadPreferences() {
   const ids = new Set(availableModels.map((m) => m.id));
   claudeModelSelect.value = ids.has(savedModel) ? savedModel : defaultClaudeModel;
   developmentModeCheckbox.checked = Boolean(savedLocal[DEVELOPMENT_MODE_KEY]);
+  const savedMode = savedLocal[CRAWL_MODE_STORAGE_KEY];
+  setSelectedCrawlMode(savedMode);
+  providedCsvInput.value = savedLocal[PROVIDED_TAXONOMY_CSV_STORAGE_KEY] || "";
 
   updateCrawlUiState();
 }
@@ -257,6 +289,34 @@ developmentModeCheckbox.addEventListener("change", async () => {
     [DEVELOPMENT_MODE_KEY]: developmentModeCheckbox.checked
   });
   updateCrawlUiState();
+});
+
+crawlModeRadios.forEach((radio) => {
+  radio.addEventListener("change", async () => {
+    updateProvidedCsvVisibility();
+    await chrome.storage.local.set({
+      [CRAWL_MODE_STORAGE_KEY]: getSelectedCrawlMode()
+    });
+  });
+});
+
+providedCsvInput.addEventListener("input", async () => {
+  await chrome.storage.local.set({
+    [PROVIDED_TAXONOMY_CSV_STORAGE_KEY]: providedCsvInput.value
+  });
+});
+
+providedCsvFile.addEventListener("change", async (event) => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) {
+    return;
+  }
+
+  const text = await file.text();
+  providedCsvInput.value = text;
+  await chrome.storage.local.set({
+    [PROVIDED_TAXONOMY_CSV_STORAGE_KEY]: text
+  });
 });
 
 claudeModelSelect.addEventListener("change", async () => {
@@ -295,9 +355,12 @@ analyzeButton.addEventListener("click", async () => {
   const amplitudeMcpServer = getSelectedMcpServerKey();
   const selectedClaudeModel = claudeModelSelect.value || defaultClaudeModel;
   const apiKey = claudeApiKeyInput.value.trim();
+  const crawlMode = getSelectedCrawlMode();
+  const providedTaxonomyCsv = providedCsvInput.value;
 
   console.log("[Amplitude Lens] Lens configuration (Crawl click)", {
     developmentMode,
+    crawlMode,
     claudeModel: selectedClaudeModel,
     claudeApiKeyConfigured: Boolean(apiKey),
     amplitudeMcpRegion: amplitudeMcpServer
@@ -319,7 +382,9 @@ analyzeButton.addEventListener("click", async () => {
     chrome.storage.local.set({
       [AMPLITUDE_MCP_STORAGE_KEY]: amplitudeMcpServer,
       [CLAUDE_MODEL_STORAGE_KEY]: selectedClaudeModel,
-      [DEVELOPMENT_MODE_KEY]: developmentMode
+      [DEVELOPMENT_MODE_KEY]: developmentMode,
+      [CRAWL_MODE_STORAGE_KEY]: crawlMode,
+      [PROVIDED_TAXONOMY_CSV_STORAGE_KEY]: providedTaxonomyCsv
     }),
     chrome.storage.session.set({
       [CLAUDE_API_KEY_STORAGE_KEY]: apiKey

@@ -22,7 +22,11 @@
     },
     "web_accessible_resources": [
       {
-        "resources": ["resources/prompts/*.prompt", "resources/enthec/*.json"],
+        "resources": [
+          "resources/prompts/*.prompt",
+          "resources/prompts/amplitude-growth-consultant/*.prompt",
+          "resources/enthec/*.json"
+        ],
         "matches": ["<all_urls>"]
       }
     ],

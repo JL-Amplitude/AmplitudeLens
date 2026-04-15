@@ -148,6 +148,69 @@ body {
   margin-bottom: 12px;
 }
 
+.csv-input {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.provided-csv-section {
+  margin-bottom: 12px;
+}
+
+.file-input {
+  width: 100%;
+  border: 1px solid var(--amp-border);
+  border-radius: 10px;
+  background: var(--amp-surface);
+  color: var(--amp-text);
+  font-size: 12px;
+  padding: 6px;
+}
+
+.file-input::file-selector-button {
+  border: 1px solid var(--amp-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-right: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--amp-text);
+  background: #f8faff;
+  cursor: pointer;
+}
+
+.file-input::file-selector-button:hover {
+  background: #eef2ff;
+}
+
+.discovery-mode-section {
+  border: 1px solid var(--amp-muted);
+  border-radius: 10px;
+  background: var(--amp-bg);
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.mode-radio-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mode-radio-row {
+  font-size: 12px;
+}
+
+.mode-help {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--amp-muted);
+}
+
+.mode-help p {
+  margin: 0 0 4px;
+}
+
 .text-input::placeholder {
   color: #9ca3af;
 }
@@ -159,7 +222,7 @@ body {
 }
 
 .dev-toggle {
-  margin-top: 8px;
+  margin-top: 4px;
   margin-bottom: 12px;
   display: flex;
   align-items: center;

@@ -57,8 +57,20 @@
     }
   }
 
-  async function runAmplitudeLensPromptOrchestration({ pageData, model }) {
+  async function runAmplitudeLensPromptOrchestration({
+    pageData,
+    model,
+    crawlMode = "quick",
+    providedTaxonomyCsv = ""
+  }) {
     const prompts = await globalThis.AMPLITUDE_LENS_PROMPTS.load();
+    const growthPromptByMode = {
+      quick: prompts.agcQuick,
+      deep: prompts.agcDeep,
+      provided: prompts.agcProvided
+    };
+    const selectedGrowthPrompt =
+      growthPromptByMode[crawlMode] || growthPromptByMode.quick || prompts.growthOps;
 
     const productAnalysisPromise = executePromptStep({
       model,
@@ -70,8 +82,12 @@
     const growthOpsPromise = executePromptStep({
       model,
       promptName: "growthOps",
-      promptTemplate: prompts.growthOps,
-      variables: { PAGE_DATA: pageData }
+      promptTemplate: selectedGrowthPrompt,
+      variables: {
+        PAGE_DATA: pageData,
+        PAGE_URL: pageData.url || "",
+        CSV_TAXONOMY: providedTaxonomyCsv || ""
+      }
     });
 
     const productAnalysis = await productAnalysisPromise;

@@ -426,7 +426,9 @@
       "amplitudeMcpServer",
       "useEuDataResidency",
       "selectedClaudeModel",
-      "developmentMode"
+      "developmentMode",
+      "crawlMode",
+      "providedTaxonomyCsv"
     ]);
     const claudeConfig = globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG || {};
     let amplitudeMcpServer = state.amplitudeMcpServer;
@@ -445,6 +447,11 @@
     const selectedClaudeModel =
       state.selectedClaudeModel || claudeConfig.defaultModel || "claude-sonnet-4-6";
     const developmentMode = Boolean(state.developmentMode);
+    const crawlMode =
+      state.crawlMode === "deep" || state.crawlMode === "provided"
+        ? state.crawlMode
+        : "quick";
+    const providedTaxonomyCsv = state.providedTaxonomyCsv || "";
 
     const crawledPagePayload = {
       ...pageData,
@@ -472,7 +479,9 @@
 
       crawlAnalysis = await globalThis.AMPLITUDE_LENS_ORCHESTRATOR.run({
         pageData: crawledPagePayload,
-        model: selectedClaudeModel
+        model: selectedClaudeModel,
+        crawlMode,
+        providedTaxonomyCsv
       });
     }
 

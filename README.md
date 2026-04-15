@@ -60,6 +60,31 @@ AmplitudeLens enriches tech stack discovery with Enthec WebAppAnalyzer technolog
 - **Consolidated output**  
   Matches are grouped into a stack fingerprint and used to generate the architecture prompt that can be copied or downloaded for Glean.
 
+## Available Claude Skills
+
+### amplitude-growth-consultant
+The `amplitude-growth-consultant` skill performs the following workflow:
+
+- **URL only**  
+  Automatically invokes the `taxonomy-discovery` skill first, then runs the full analysis.
+- **URL + CSV taxonomy**  
+  Jumps straight to analysis using the provided events.
+- **Input modes**  
+  Three input modes are supported:
+
+| Mode | How to trigger | Turnaround | What happens |
+| --- | --- | --- | --- |
+| provided | URL + CSV taxonomy | Instant | Skips to analysis directly |
+| quick (default) | URL only, or "quick/fast/brief" | < 60s | Infers 10–15 events inline from web research |
+| deep | "deep/full/detailed/use turbodemo" | 5–10 min | Invokes turbodemo-taxonomy for a full CSV |
+- **Output format**  
+  Returns pure JSON designed for downstream consumption (for example this Chrome extension), with these fields:
+  - `intro` — executive summary for display in a UI
+  - `industry` + `taxonomy_source` — metadata
+  - `friction_points` — 4–6 items with severity, evidence tied to taxonomy events, and industry benchmarks
+  - `amplitude_use_cases` — up to 4, each naming a specific Amplitude blade and feature (Analytics, Experiment, Session Replay, Guides & Surveys, Amplitude AI)
+  - `experiments` — 3–5 items with full if/then/because hypotheses, success/guardrail events, and the friction point they address
+
 ## FAQ
 
 ### Why Use a Backend Instead of Calling Claude Directly?

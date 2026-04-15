@@ -17,11 +17,38 @@
 
     <section id="panelCrawl" class="tab-panel" role="tabpanel" aria-labelledby="tabCrawl">
       <p class="subtitle tab-panel-lead">Run analysis on the active tab. Results appear below.</p>
-      <p id="crawlBlockedHint" class="hint hint--warn" hidden>Complete <strong>Lens Configuration</strong> (model and API key) to enable crawling.</p>
       <label class="dev-toggle" for="developmentMode">
         <input type="checkbox" id="developmentMode">
         <span>Discover tech stack ONLY (No site crawl)</span>
       </label>
+      <p id="crawlBlockedHint" class="hint hint--warn" hidden>Complete <strong>Lens Configuration</strong> (model and API key) to enable crawling.</p>
+      <section id="discoveryModeSection" class="discovery-mode-section">
+        <p class="field-label field-label--static">Discovery mode</p>
+        <div class="mode-radio-group" role="radiogroup" aria-label="Discovery mode">
+          <label class="radio-row mode-radio-row">
+            <input type="radio" name="crawlMode" value="quick" checked>
+            <span>quick (default)</span>
+          </label>
+          <label class="radio-row mode-radio-row">
+            <input type="radio" name="crawlMode" value="deep">
+            <span>deep</span>
+          </label>
+          <label class="radio-row mode-radio-row">
+            <input type="radio" name="crawlMode" value="provided">
+            <span>provided</span>
+          </label>
+        </div>
+        <div class="mode-help">
+          <p><strong>quick:</strong> Infers taxonomy from industry (&lt;60 seconds)</p>
+          <p><strong>deep:</strong> Execute an exhaustive taxonomy discovery (5 to 10 mins)</p>
+          <p><strong>provided:</strong> Provide a taxonomy that you already have (&lt;60 seconds)</p>
+        </div>
+      </section>
+      <section id="providedCsvSection" class="config-card provided-csv-section" hidden>
+        <label class="field-label" for="providedCsvInput">Provided taxonomy CSV</label>
+        <textarea id="providedCsvInput" class="text-input csv-input" spellcheck="false" placeholder="Paste taxonomy CSV here..."></textarea>
+        <input type="file" id="providedCsvFile" class="file-input" accept=".csv,text/csv" />
+      </section>
       <button type="button" id="analyzeBtn" disabled>Start Discovery</button>
       <section id="discoveryOutputSection" hidden>
         <div class="result-tabs" role="tablist" aria-label="Result sections">
@@ -52,7 +79,7 @@
       <section class="config-card" id="configPanelClaude">
         <label class="field-label" for="claudeModelSelect">Claude model</label>
         <select id="claudeModelSelect" class="model-select" required></select>
-        <label class="field-label" for="claudeApiKeyInput">Claude API key</label>
+        <label class="field-label" for="claudeApiKeyInput">Anthropic Messages API Key</label>
         <input type="password" id="claudeApiKeyInput" class="text-input" autocomplete="off" spellcheck="false" placeholder="sk-ant-api03-…" required>
       </section>
 

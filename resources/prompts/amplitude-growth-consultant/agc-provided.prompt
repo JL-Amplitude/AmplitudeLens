@@ -1,0 +1,8 @@
+Analyze this website using the amplitude-growth-consultant skill. 
+A tracking taxonomy CSV is provided below.
+
+Website: {{PAGE_URL}}
+Mode: provided
+
+Taxonomy CSV:
+{{CSV_TAXONOMY}}
