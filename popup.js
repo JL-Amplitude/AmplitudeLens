@@ -14,9 +14,14 @@ const developmentModeCheckbox = document.getElementById("developmentMode");
 const discoveryOutputSection = document.getElementById("discoveryOutputSection");
 const resultTabCrawl = document.getElementById("resultTabCrawl");
 const resultTabTech = document.getElementById("resultTabTech");
+const crawlResultsActions = document.getElementById("crawlResultsActions");
+const copyCrawlResultsBtn = document.getElementById("copyCrawlResultsBtn");
+const downloadCrawlResultsBtn = document.getElementById("downloadCrawlResultsBtn");
 const mcpRadios = document.querySelectorAll('input[name="amplitudeMcp"]');
 const claudeModelSelect = document.getElementById("claudeModelSelect");
 const claudeApiKeyInput = document.getElementById("claudeApiKeyInput");
+const toggleApiKeyVisibilityBtn = document.getElementById("toggleApiKeyVisibilityBtn");
+const apiKeyVisibilityIcon = document.getElementById("apiKeyVisibilityIcon");
 const crawlBlockedHint = document.getElementById("crawlBlockedHint");
 const architecturePromptSection = document.getElementById("architecturePromptSection");
 const architecturePromptText = document.getElementById("architecturePromptText");
@@ -52,9 +57,22 @@ const availableModels = claudeConfig.availableModels || [
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" }
 ];
 const defaultClaudeModel = claudeConfig.defaultModel || "claude-sonnet-4-6";
+const TECH_STACK_ONLY_MESSAGE = "Just tech stack discovery was performed.";
 
 let crawlInProgress = false;
 let currentRunStatus = "idle";
+let lastCrawlResultsText = "";
+let hasExportableGrowthOpsResult = false;
+
+function syncCrawlResultActionsVisibility() {
+  const isGrowthTabActive = resultTabCrawl.classList.contains("result-tab--active");
+  const isTechStackOnlyRun =
+    (lastCrawlResultsText || "").trim() === TECH_STACK_ONLY_MESSAGE;
+  const shouldShow =
+    isGrowthTabActive && hasExportableGrowthOpsResult && !isTechStackOnlyRun;
+  crawlResultsActions.hidden = !shouldShow;
+  crawlResultsActions.style.display = shouldShow ? "flex" : "none";
+}
 
 function renderClaudeModels() {
   claudeModelSelect.innerHTML = "";
@@ -81,6 +99,12 @@ function setResultTab(which) {
   resultTabTech.setAttribute("aria-selected", String(!isCrawl));
   crawlResultsEl.hidden = !isCrawl;
   techSummarySection.hidden = isCrawl;
+  if (!isCrawl) {
+    crawlResultsActions.hidden = true;
+    crawlResultsActions.style.display = "none";
+    return;
+  }
+  syncCrawlResultActionsVisibility();
 }
 
 function setTechDetailTab(which) {
@@ -95,13 +119,144 @@ function setTechDetailTab(which) {
 
 function setDiscoveryOutputVisible(isVisible) {
   discoveryOutputSection.hidden = !isVisible;
+  if (!isVisible) {
+    crawlResultsActions.hidden = true;
+  } else {
+    syncCrawlResultActionsVisibility();
+  }
 }
 
 function clearRenderedResults() {
   crawlResultsEl.innerHTML = "";
+  lastCrawlResultsText = "";
+  hasExportableGrowthOpsResult = false;
+  syncCrawlResultActionsVisibility();
   techResultsEl.innerHTML = "";
   architecturePromptSection.hidden = true;
   architecturePromptText.value = "";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function renderInlineMarkdown(text) {
+  const escaped = escapeHtml(text);
+  return escaped
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function renderMarkdownToHtml(markdown) {
+  const lines = String(markdown || "").split("\n");
+  const html = [];
+  let inCodeBlock = false;
+  let listType = null;
+
+  const closeList = () => {
+    if (listType) {
+      html.push(`</${listType}>`);
+      listType = null;
+    }
+  };
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.replace(/\r/g, "");
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("```")) {
+      closeList();
+      if (!inCodeBlock) {
+        inCodeBlock = true;
+        html.push("<pre><code>");
+      } else {
+        inCodeBlock = false;
+        html.push("</code></pre>");
+      }
+      return;
+    }
+
+    if (inCodeBlock) {
+      html.push(`${escapeHtml(line)}\n`);
+      return;
+    }
+
+    if (!trimmed) {
+      closeList();
+      html.push("<p></p>");
+      return;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,4})\s+(.+)$/);
+    if (headingMatch) {
+      closeList();
+      const level = headingMatch[1].length;
+      html.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      return;
+    }
+
+    const unorderedMatch = trimmed.match(/^[-*]\s+(.+)$/);
+    if (unorderedMatch) {
+      if (listType !== "ul") {
+        closeList();
+        listType = "ul";
+        html.push("<ul>");
+      }
+      html.push(`<li>${renderInlineMarkdown(unorderedMatch[1])}</li>`);
+      return;
+    }
+
+    const orderedMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+    if (orderedMatch) {
+      if (listType !== "ol") {
+        closeList();
+        listType = "ol";
+        html.push("<ol>");
+      }
+      html.push(`<li>${renderInlineMarkdown(orderedMatch[1])}</li>`);
+      return;
+    }
+
+    closeList();
+    html.push(`<p>${renderInlineMarkdown(trimmed)}</p>`);
+  });
+
+  closeList();
+  if (inCodeBlock) {
+    html.push("</code></pre>");
+  }
+  return html.join("");
+}
+
+function resolveCrawlResultMarkdown(data) {
+  if (!data) {
+    return "";
+  }
+
+  const crawlPayload = data.crawlAnalysis ? data.crawlAnalysis : data;
+  if (typeof crawlPayload === "string") {
+    return crawlPayload;
+  }
+  if (crawlPayload && typeof crawlPayload.markdown === "string") {
+    return crawlPayload.markdown;
+  }
+  if (crawlPayload && typeof crawlPayload.growthOps === "string") {
+    return crawlPayload.growthOps;
+  }
+  if (
+    crawlPayload &&
+    crawlPayload.growthOps &&
+    typeof crawlPayload.growthOps === "object" &&
+    typeof crawlPayload.growthOps.markdown === "string"
+  ) {
+    return crawlPayload.growthOps.markdown;
+  }
+
+  return "";
 }
 
 async function persistRunState(status, results = null, metadata = {}) {
@@ -227,13 +382,27 @@ function updateProvidedCsvVisibility() {
 
 function renderCrawlResult(data) {
   if (data && data.mode === "development") {
-    crawlResultsEl.innerHTML =
-      '<p class="status">Just tech stack discovery was performed.</p>';
+    crawlResultsEl.innerHTML = `<p class="status">${TECH_STACK_ONLY_MESSAGE}</p>`;
+    lastCrawlResultsText = TECH_STACK_ONLY_MESSAGE;
+    hasExportableGrowthOpsResult = false;
+    syncCrawlResultActionsVisibility();
     return;
   }
 
   const crawlPayload = data && data.crawlAnalysis ? data.crawlAnalysis : data;
-  crawlResultsEl.innerHTML = `<pre>${JSON.stringify(crawlPayload, null, 2)}</pre>`;
+  const markdownOutput = resolveCrawlResultMarkdown(data);
+  if (markdownOutput) {
+    lastCrawlResultsText = markdownOutput;
+    crawlResultsEl.innerHTML = `<div class="markdown-results">${renderMarkdownToHtml(markdownOutput)}</div>`;
+  } else {
+    lastCrawlResultsText = JSON.stringify(crawlPayload, null, 2);
+    crawlResultsEl.innerHTML = `<pre>${lastCrawlResultsText}</pre>`;
+  }
+  hasExportableGrowthOpsResult = Boolean(
+    lastCrawlResultsText.trim() &&
+    lastCrawlResultsText.trim() !== TECH_STACK_ONLY_MESSAGE
+  );
+  syncCrawlResultActionsVisibility();
 }
 
 function formatGeneratedAt(isoDateString) {
@@ -484,6 +653,25 @@ claudeApiKeyInput.addEventListener("blur", async () => {
   });
 });
 
+function syncApiKeyVisibilityButton() {
+  const isVisible = claudeApiKeyInput.type === "text";
+  toggleApiKeyVisibilityBtn.setAttribute(
+    "aria-label",
+    isVisible ? "Hide API key" : "Show API key"
+  );
+  toggleApiKeyVisibilityBtn.title = isVisible ? "Hide API key" : "Show API key";
+  apiKeyVisibilityIcon.src = isVisible
+    ? "icons/mask_text.png"
+    : "icons/show_text.png";
+}
+
+toggleApiKeyVisibilityBtn.addEventListener("click", () => {
+  claudeApiKeyInput.type = claudeApiKeyInput.type === "password" ? "text" : "password";
+  syncApiKeyVisibilityButton();
+});
+
+syncApiKeyVisibilityButton();
+
 analyzeButton.addEventListener("click", async () => {
   if (currentRunStatus === "running") {
     return;
@@ -522,6 +710,8 @@ analyzeButton.addEventListener("click", async () => {
     : "Crawling...";
   setDiscoveryOutputVisible(false);
   crawlResultsEl.innerHTML = '<p class="status">Running crawl analysis...</p>';
+  crawlResultsActions.hidden = true;
+  lastCrawlResultsText = "";
   techResultsEl.innerHTML = '<p class="status">Waiting for tech stack discovery...</p>';
   setResultTab(developmentMode ? "tech" : "crawl");
   architecturePromptSection.hidden = true;
@@ -638,6 +828,40 @@ downloadPromptBtn.addEventListener("click", () => {
   const a = document.createElement("a");
   a.href = url;
   a.download = "amplitude-architecture-prompt.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+copyCrawlResultsBtn.addEventListener("click", async () => {
+  if (!hasExportableGrowthOpsResult) {
+    return;
+  }
+  const payload = (lastCrawlResultsText || "").trim();
+  if (!payload) {
+    return;
+  }
+
+  await navigator.clipboard.writeText(payload);
+  copyCrawlResultsBtn.textContent = "Copied";
+  setTimeout(() => {
+    copyCrawlResultsBtn.textContent = "Copy Ops";
+  }, 1200);
+});
+
+downloadCrawlResultsBtn.addEventListener("click", () => {
+  if (!hasExportableGrowthOpsResult) {
+    return;
+  }
+  const payload = (lastCrawlResultsText || "").trim();
+  if (!payload) {
+    return;
+  }
+
+  const blob = new Blob([payload], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "amplitude-growth-opportunities.md";
   a.click();
   URL.revokeObjectURL(url);
 });

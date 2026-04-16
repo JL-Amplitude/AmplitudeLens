@@ -56,6 +56,10 @@
           <button type="button" class="result-tab" id="resultTabTech" aria-selected="false">Tech Stack Summary</button>
         </div>
         <div id="crawlResults" class="results"></div>
+        <div id="crawlResultsActions" class="prompt-actions" hidden>
+          <button type="button" id="copyCrawlResultsBtn" class="secondary-btn">Copy Ops</button>
+          <button type="button" id="downloadCrawlResultsBtn" class="secondary-btn">Download Ops</button>
+        </div>
         <section id="techSummarySection" hidden>
           <div id="techDetailTabs" class="tech-detail-tabs" role="tablist" aria-label="Tech summary details" hidden>
             <button type="button" class="result-tab result-tab--active" id="techDetailTabJson" aria-selected="true">JSON</button>
@@ -86,7 +90,12 @@
         <label class="field-label" for="claudeModelSelect">Claude model</label>
         <select id="claudeModelSelect" class="model-select" required></select>
         <label class="field-label" for="claudeApiKeyInput">Anthropic Messages API Key</label>
-        <input type="password" id="claudeApiKeyInput" class="text-input" autocomplete="off" spellcheck="false" placeholder="sk-ant-api03-…" required>
+        <div class="sensitive-input-row">
+          <input type="password" id="claudeApiKeyInput" class="text-input" autocomplete="off" spellcheck="false" placeholder="sk-ant-api03-…" required>
+          <button type="button" id="toggleApiKeyVisibilityBtn" class="icon-btn" aria-label="Show API key" title="Show API key">
+            <img id="apiKeyVisibilityIcon" src="icons/show_text.png" alt="" aria-hidden="true">
+          </button>
+        </div>
       </section>
 
       <section class="config-card" id="configPanelMcp" hidden>
