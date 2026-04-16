@@ -415,6 +415,17 @@ analyzeButton.addEventListener("click", async () => {
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
+      func: (runtimeKey) => {
+        globalThis.AMPLITUDE_LENS_RUNTIME = {
+          ...(globalThis.AMPLITUDE_LENS_RUNTIME || {}),
+          claudeApiKey: runtimeKey
+        };
+      },
+      args: [apiKey]
+    });
+
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
       files: [
         "resources/context.js",
         "resources/claude/claudeCredentials.js",

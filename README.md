@@ -97,3 +97,21 @@ The `amplitude-growth-consultant` skill performs the following workflow:
   Cache previous analyses and track latency or failures.
 - **Future Extensibility**  
   Add integrations later (for example Salesforce, MCP, or Slack) without changing the extension architecture.
+
+### Why does Claude helper call `background.js` instead of fetching directly?
+
+- **Correct extension network context**  
+  Prompt execution runs from scripts injected into the active tab, and direct cross-origin fetches to Anthropic can fail in that context with generic browser errors.
+- **Reliability for cross-origin requests**  
+  Routing Claude API calls through `background.js` uses the extension service worker as the request context, which is more reliable for external API communication.
+- **Better error visibility**  
+  The background relay returns structured status/error payloads, making debugging easier than handling opaque `Failed to fetch` errors in content-script execution.
+
+### Why is the `anthropic-dangerous-direct-browser-access` header included?
+
+- **Required for browser-context requests**  
+  Anthropic enforces an additional safeguard for requests initiated from browser/extension contexts (including service-worker relays in extensions).
+- **Prevents authentication errors**  
+  Without this header, Anthropic can reject the request with a `401 authentication_error` indicating that browser access requires explicit acknowledgment.
+- **Explicit intent signal**  
+  The header makes it explicit that the request is intentionally executed from a browser-based client rather than a traditional server-to-server backend.

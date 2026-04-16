@@ -3,8 +3,19 @@
 
   async function getClaudeConfigForRequest() {
     const base = globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG || {};
-    const sessionData = await chrome.storage.session.get(CLAUDE_API_KEY_SESSION_KEY);
-    const apiKey = String(sessionData[CLAUDE_API_KEY_SESSION_KEY] || "").trim();
+    const runtimeApiKey = String(
+      (globalThis.AMPLITUDE_LENS_RUNTIME && globalThis.AMPLITUDE_LENS_RUNTIME.claudeApiKey) || ""
+    ).trim();
+    let apiKey = runtimeApiKey;
+
+    if (!apiKey) {
+      try {
+        const sessionData = await chrome.storage.session.get(CLAUDE_API_KEY_SESSION_KEY);
+        apiKey = String(sessionData[CLAUDE_API_KEY_SESSION_KEY] || "").trim();
+      } catch (_error) {
+        // In some injection contexts storage.session access is restricted.
+      }
+    }
 
     if (!apiKey) {
       throw new Error(
@@ -35,6 +46,36 @@
     return textParts.join("\n").trim();
   }
 
+  async function sendClaudeRequestViaBackground({ url, headers, body }) {
+    const result = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        {
+          type: "CLAUDE_MESSAGES_REQUEST",
+          url,
+          headers,
+          body
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          resolve(response);
+        }
+      );
+    });
+
+    if (!result || !result.ok) {
+      const details =
+        result && result.error
+          ? result.error
+          : JSON.stringify(result && result.payload ? result.payload : {});
+      throw new Error(`Claude API request failed (${result ? result.status : 0}): ${details}`);
+    }
+
+    return result.payload;
+  }
+
   async function executeClaudePrompt({
     prompt,
     model,
@@ -42,15 +83,15 @@
     temperature = 0.2
   }) {
     const config = await getClaudeConfigForRequest();
-
-    const response = await fetch(config.apiUrl, {
-      method: "POST",
+    const payload = await sendClaudeRequestViaBackground({
+      url: config.apiUrl,
       headers: {
         "Content-Type": "application/json",
         "x-api-key": config.apiKey,
-        "anthropic-version": config.anthropicVersion
+        "anthropic-version": config.anthropicVersion,
+        "anthropic-dangerous-direct-browser-access": "true"
       },
-      body: JSON.stringify({
+      body: {
         model: model || config.defaultModel,
         max_tokens: maxTokens,
         temperature,
@@ -64,15 +105,8 @@
         metadata: {
           user_id: config.user
         }
-      })
+      }
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API request failed (${response.status}): ${errorText}`);
-    }
-
-    const payload = await response.json();
     return extractClaudeText(payload);
   }
 

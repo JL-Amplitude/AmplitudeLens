@@ -56,5 +56,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({
       entries: tabId >= 0 ? tabHeaders.get(tabId) || [] : []
     });
+    return;
+  }
+
+  if (message.type === "CLAUDE_MESSAGES_REQUEST") {
+    (async () => {
+      try {
+        const response = await fetch(message.url, {
+          method: "POST",
+          headers: message.headers || {},
+          body: JSON.stringify(message.body || {})
+        });
+
+        const responseText = await response.text();
+        let payload;
+        try {
+          payload = JSON.parse(responseText);
+        } catch (_error) {
+          payload = responseText;
+        }
+
+        sendResponse({
+          ok: response.ok,
+          status: response.status,
+          payload
+        });
+      } catch (error) {
+        sendResponse({
+          ok: false,
+          status: 0,
+          error: error.message
+        });
+      }
+    })();
+
+    return true;
   }
 });

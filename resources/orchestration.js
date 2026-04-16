@@ -72,13 +72,18 @@
     const selectedGrowthPrompt =
       growthPromptByMode[crawlMode] || growthPromptByMode.quick || prompts.growthOps;
 
+    /*
+    // Execute the product analysis prompt
     const productAnalysisPromise = executePromptStep({
       model,
       promptName: "productAnalysis",
       promptTemplate: prompts.productAnalysis,
       variables: { PAGE_DATA: pageData }
     });
+    */
 
+    // Execute the growth ops prompt
+    console.log("[Amplitude Lens] Orchestration: Executing growth ops prompt");
     const growthOpsPromise = executePromptStep({
       model,
       promptName: "growthOps",
@@ -89,9 +94,20 @@
         CSV_TAXONOMY: providedTaxonomyCsv || ""
       }
     });
-
+    let growthOps;
+    try {
+      growthOps = await growthOpsPromise;
+      console.log("[Amplitude Lens] Orchestration: Growth ops prompt completed");
+    } catch (error) {
+      console.error("[Amplitude Lens] Orchestration: Growth ops prompt failed", error);
+      throw error;
+    }
+    
+    /*
+    // Await for product analysis prompt to be completed
     const productAnalysis = await productAnalysisPromise;
 
+    // Execute the tracking plan prompt
     const trackingPlanPromise = executePromptStep({
       model,
       promptName: "trackingPlan",
@@ -100,12 +116,16 @@
         JOURNEYS_JSON: productAnalysis
       }
     });
-
+    */
+    
+    /*
+    // Await for tracking plan and growth ops prompts to be completed
     const [trackingPlan, growthOps] = await Promise.all([
       trackingPlanPromise,
       growthOpsPromise
     ]);
 
+    // Execute the demo storyline prompt
     const demoStoryline = await executePromptStep({
       model,
       promptName: "demoStoryline",
@@ -118,12 +138,13 @@
         }
       }
     });
+    */
 
     return {
-      productAnalysis,
-      growthOps,
-      trackingPlan,
-      demoStoryline
+      //productAnalysis,
+      growthOps
+      //trackingPlan,
+      //demoStoryline
     };
   }
 
