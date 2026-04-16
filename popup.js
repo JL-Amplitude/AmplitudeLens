@@ -167,6 +167,12 @@ function updateProvidedCsvVisibility() {
 }
 
 function renderCrawlResult(data) {
+  if (data && data.mode === "development") {
+    crawlResultsEl.innerHTML =
+      '<p class="status">Just tech stack discovery was performed.</p>';
+    return;
+  }
+
   const crawlPayload = data && data.crawlAnalysis ? data.crawlAnalysis : data;
   crawlResultsEl.innerHTML = `<pre>${JSON.stringify(crawlPayload, null, 2)}</pre>`;
 }

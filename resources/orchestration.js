@@ -83,7 +83,10 @@
     */
 
     // Execute the growth ops prompt
-    console.log("[Amplitude Lens] Orchestration: Executing growth ops prompt");
+    console.log("[Amplitude Lens] Orchestration: Executing growth ops prompt", {
+      crawlMode,
+      promptTemplate: selectedGrowthPrompt
+    });
     const growthOpsPromise = executePromptStep({
       model,
       promptName: "growthOps",
