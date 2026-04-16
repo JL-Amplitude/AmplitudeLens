@@ -17,6 +17,7 @@ const resultTabTech = document.getElementById("resultTabTech");
 const crawlResultsActions = document.getElementById("crawlResultsActions");
 const copyCrawlResultsBtn = document.getElementById("copyCrawlResultsBtn");
 const downloadCrawlResultsBtn = document.getElementById("downloadCrawlResultsBtn");
+const openCrawlResultsBtn = document.getElementById("openCrawlResultsBtn");
 const mcpRadios = document.querySelectorAll('input[name="amplitudeMcp"]');
 const claudeModelSelect = document.getElementById("claudeModelSelect");
 const claudeApiKeyInput = document.getElementById("claudeApiKeyInput");
@@ -257,6 +258,232 @@ function resolveCrawlResultMarkdown(data) {
   }
 
   return "";
+}
+
+function openOpsResultsInWindow() {
+  if (!hasExportableGrowthOpsResult) {
+    return;
+  }
+  const content = (lastCrawlResultsText || "").trim();
+  if (!content) {
+    return;
+  }
+
+  const asHtml = resolveCrawlResultMarkdown({ crawlAnalysis: content })
+    ? `<div class="markdown-results">${renderMarkdownToHtml(content)}</div>`
+    : `<pre>${escapeHtml(content)}</pre>`;
+
+  const w = Math.min(1100, Math.max(860, Math.floor(window.screen.width * 0.62)));
+  const h = Math.min(980, Math.max(720, Math.floor(window.screen.height * 0.78)));
+  const left = Math.max(20, Math.floor((window.screen.width - w) / 2));
+  const top = Math.max(20, Math.floor((window.screen.height - h) / 2));
+
+  const popup = window.open(
+    "",
+    "amplitudeLensOpsResults",
+    `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+  );
+
+  if (!popup) {
+    return;
+  }
+
+  const doc = popup.document;
+  doc.open();
+  const encodedContent = encodeURIComponent(content);
+  doc.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Amplitude Lens - Growth Opportunities</title>
+    <style>
+      :root {
+        --amp-primary: #4361ee;
+        --amp-bg: #f5f7ff;
+        --amp-surface: #ffffff;
+        --amp-text: #1f2937;
+        --amp-muted: #5b6474;
+        --amp-border: #d9e0ff;
+      }
+
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        background: linear-gradient(180deg, #eef2ff 0%, var(--amp-bg) 100%);
+        color: var(--amp-text);
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: rgba(245, 247, 255, 0.92);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--amp-border);
+        padding: 14px 18px;
+      }
+
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--amp-primary);
+      }
+
+      .header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 8px;
+      }
+
+      .btn {
+        border: 1px solid var(--amp-border);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--amp-text);
+        background: #f8faff;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .btn:hover { background: #eef2ff; }
+      .btn:active { transform: translateY(1px); }
+
+      header p {
+        margin: 6px 0 0;
+        font-size: 12px;
+        color: var(--amp-muted);
+      }
+
+      main {
+        padding: 14px 18px 20px;
+      }
+
+      .card {
+        border: 1px solid var(--amp-border);
+        border-radius: 12px;
+        background: var(--amp-surface);
+        padding: 14px;
+        box-shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
+      }
+
+      .markdown-results {
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .markdown-results h1 { font-size: 18px; margin: 0 0 10px; }
+      .markdown-results h2 { font-size: 16px; margin: 14px 0 8px; }
+      .markdown-results h3 { font-size: 14px; margin: 12px 0 6px; }
+      .markdown-results p { margin: 0 0 10px; }
+      .markdown-results ul, .markdown-results ol { margin: 0 0 10px 20px; }
+      .markdown-results li { margin: 0 0 6px; }
+      .markdown-results code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: #eef2ff;
+        padding: 1px 4px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .markdown-results pre {
+        margin: 0 0 10px;
+        padding: 10px;
+        border-radius: 10px;
+        background: #f8faff;
+        border: 1px solid var(--amp-border);
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="header-row">
+        <h1>Growth Opportunities</h1>
+        <div class="header-actions">
+          <button type="button" class="btn" id="copyOpsBtn">Copy Ops</button>
+          <button type="button" class="btn" id="downloadOpsBtn">Download Ops</button>
+        </div>
+      </div>
+      <p>Generated by Amplitude Lens</p>
+    </header>
+    <main>
+      <div class="card">
+        ${asHtml}
+      </div>
+    </main>
+    <script>
+      (function () {
+        const markdownText = decodeURIComponent("${encodedContent}");
+        const copyBtn = document.getElementById("copyOpsBtn");
+        const downloadBtn = document.getElementById("downloadOpsBtn");
+
+        const copyToClipboard = async (value) => {
+          const text = String(value || "");
+          if (!text) {
+            return;
+          }
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return;
+          }
+
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.setAttribute("readonly", "true");
+          textarea.style.position = "fixed";
+          textarea.style.top = "-1000px";
+          textarea.style.left = "-1000px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+        };
+
+        copyBtn.addEventListener("click", async () => {
+          const payload = String(markdownText || "").trim();
+          if (!payload) {
+            return;
+          }
+
+          await copyToClipboard(payload);
+          copyBtn.textContent = "Copied";
+          setTimeout(() => {
+            copyBtn.textContent = "Copy Ops";
+          }, 1200);
+        });
+
+        downloadBtn.addEventListener("click", () => {
+          const payload = String(markdownText || "").trim();
+          if (!payload) {
+            return;
+          }
+          const blob = new Blob([payload], { type: "text/markdown;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "amplitude-growth-opportunities.md";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+      })();
+    </script>
+  </body>
+</html>`);
+  doc.close();
 }
 
 async function persistRunState(status, results = null, metadata = {}) {
@@ -864,6 +1091,10 @@ downloadCrawlResultsBtn.addEventListener("click", () => {
   a.download = "amplitude-growth-opportunities.md";
   a.click();
   URL.revokeObjectURL(url);
+});
+
+openCrawlResultsBtn.addEventListener("click", () => {
+  openOpsResultsInWindow();
 });
 
 function waitForTabComplete(tabId, timeoutMs = 20000) {
