@@ -1,5 +1,30 @@
 (async function () {
   let enthecTechnologiesPromise = null;
+  const DISCOVERY_RUN_STATE_KEY = "discoveryRunState";
+  const DISCOVERY_RUN_RESULTS_KEY = "discoveryRunResults";
+
+  async function persistDiscoveryStatus(status, results = null, metadata = {}) {
+    const runStatePayload = {
+      status,
+      updatedAt: Date.now(),
+      ...metadata
+    };
+    const writes = [
+      chrome.storage.local.set({
+        [DISCOVERY_RUN_STATE_KEY]: runStatePayload
+      })
+    ];
+
+    if (results !== null) {
+      writes.push(
+        chrome.storage.local.set({
+          [DISCOVERY_RUN_RESULTS_KEY]: results
+        })
+      );
+    }
+
+    await Promise.all(writes);
+  }
 
   function sendRuntimeMessage(message) {
     return new Promise((resolve) => {
@@ -497,16 +522,24 @@
       finalData
     );
 
+    await persistDiscoveryStatus("completed", finalData, {
+      completedAt: Date.now()
+    });
+
     chrome.runtime.sendMessage({
       type: "PAGE_ANALYSIS",
       data: finalData
     });
   } catch (error) {
+    const errorData = {
+      error: error.message
+    };
+    await persistDiscoveryStatus("completed", errorData, {
+      completedAt: Date.now()
+    });
     chrome.runtime.sendMessage({
       type: "PAGE_ANALYSIS",
-      data: {
-        error: error.message
-      }
+      data: errorData
     });
   }
 })();

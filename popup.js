@@ -44,6 +44,8 @@ const CLAUDE_API_KEY_STORAGE_KEY = "claudeApiKey";
 const DEVELOPMENT_MODE_KEY = "developmentMode";
 const CRAWL_MODE_STORAGE_KEY = "crawlMode";
 const PROVIDED_TAXONOMY_CSV_STORAGE_KEY = "providedTaxonomyCsv";
+const DISCOVERY_RUN_STATE_KEY = "discoveryRunState";
+const DISCOVERY_RUN_RESULTS_KEY = "discoveryRunResults";
 
 const claudeConfig = globalThis.AMPLITUDE_LENS_CLAUDE_CONFIG || {};
 const availableModels = claudeConfig.availableModels || [
@@ -52,6 +54,7 @@ const availableModels = claudeConfig.availableModels || [
 const defaultClaudeModel = claudeConfig.defaultModel || "claude-sonnet-4-6";
 
 let crawlInProgress = false;
+let currentRunStatus = "idle";
 
 function renderClaudeModels() {
   claudeModelSelect.innerHTML = "";
@@ -94,15 +97,71 @@ function setDiscoveryOutputVisible(isVisible) {
   discoveryOutputSection.hidden = !isVisible;
 }
 
+function clearRenderedResults() {
+  crawlResultsEl.innerHTML = "";
+  techResultsEl.innerHTML = "";
+  architecturePromptSection.hidden = true;
+  architecturePromptText.value = "";
+}
+
+async function persistRunState(status, results = null, metadata = {}) {
+  const payload = {
+    status,
+    updatedAt: Date.now(),
+    ...metadata
+  };
+
+  const writes = [
+    chrome.storage.local.set({
+      [DISCOVERY_RUN_STATE_KEY]: payload
+    })
+  ];
+
+  if (results !== null) {
+    writes.push(
+      chrome.storage.local.set({
+        [DISCOVERY_RUN_RESULTS_KEY]: results
+      })
+    );
+  }
+
+  await Promise.all(writes);
+}
+
+async function resetToPreExecutionState() {
+  currentRunStatus = "idle";
+  crawlInProgress = false;
+  await chrome.storage.local.remove([DISCOVERY_RUN_STATE_KEY, DISCOVERY_RUN_RESULTS_KEY]);
+  clearRenderedResults();
+  setResultTab("crawl");
+  setDiscoveryOutputVisible(false);
+  analyzeButton.textContent = "Start Discovery";
+  updateCrawlUiState();
+}
+
 function updateCrawlUiState() {
   const developmentMode = developmentModeCheckbox.checked;
   const complete = developmentMode || isClaudeConfigComplete();
   discoveryModeSection.hidden = developmentMode;
   updateProvidedCsvVisibility();
 
+  if (currentRunStatus === "running") {
+    analyzeButton.disabled = true;
+    crawlBlockedHint.hidden = true;
+    return;
+  }
+
+  if (currentRunStatus === "completed") {
+    analyzeButton.disabled = false;
+    analyzeButton.textContent = "Execute new discovery";
+    crawlBlockedHint.hidden = true;
+    return;
+  }
+
   crawlBlockedHint.hidden = developmentMode || complete;
   if (!crawlInProgress) {
     analyzeButton.disabled = !complete;
+    analyzeButton.textContent = "Start Discovery";
   }
 }
 
@@ -283,12 +342,65 @@ async function loadPreferences() {
   updateCrawlUiState();
 }
 
+async function restorePersistedDiscoveryState() {
+  const stored = await chrome.storage.local.get([
+    DISCOVERY_RUN_STATE_KEY,
+    DISCOVERY_RUN_RESULTS_KEY
+  ]);
+  const runState = stored[DISCOVERY_RUN_STATE_KEY];
+  const persistedResults = stored[DISCOVERY_RUN_RESULTS_KEY];
+
+  if (!runState || !runState.status) {
+    currentRunStatus = "idle";
+    clearRenderedResults();
+    setDiscoveryOutputVisible(false);
+    updateCrawlUiState();
+    return;
+  }
+
+  currentRunStatus = runState.status;
+
+  if (runState.status === "running") {
+    crawlInProgress = true;
+    analyzeButton.textContent =
+      runState.mode === "development" ? "Running tech discovery..." : "Crawling...";
+    analyzeButton.disabled = true;
+    crawlBlockedHint.hidden = true;
+    return;
+  }
+
+  if (runState.status === "completed") {
+    crawlInProgress = false;
+    if (persistedResults) {
+      renderCrawlResult(persistedResults);
+      renderTechResult(persistedResults);
+      setDiscoveryOutputVisible(true);
+    } else {
+      setDiscoveryOutputVisible(false);
+      clearRenderedResults();
+    }
+    analyzeButton.textContent = "Execute new discovery";
+    analyzeButton.disabled = false;
+    crawlBlockedHint.hidden = true;
+    return;
+  }
+
+  currentRunStatus = "idle";
+  clearRenderedResults();
+  setDiscoveryOutputVisible(false);
+  updateCrawlUiState();
+}
+
 renderClaudeModels();
 setActiveTab("crawl");
 setConfigTab("claude");
 setResultTab("crawl");
 setDiscoveryOutputVisible(false);
-loadPreferences();
+loadPreferences()
+  .then(() => restorePersistedDiscoveryState())
+  .catch((error) => {
+    console.error("[Amplitude Lens] Failed to restore popup state", error);
+  });
 loadStackTechnologiesMetadata();
 
 tabCrawl.addEventListener("click", () => setActiveTab("crawl"));
@@ -373,6 +485,15 @@ claudeApiKeyInput.addEventListener("blur", async () => {
 });
 
 analyzeButton.addEventListener("click", async () => {
+  if (currentRunStatus === "running") {
+    return;
+  }
+
+  if (currentRunStatus === "completed") {
+    await resetToPreExecutionState();
+    return;
+  }
+
   const developmentMode = developmentModeCheckbox.checked;
   if (!developmentMode && !isClaudeConfigComplete()) {
     return;
@@ -394,6 +515,7 @@ analyzeButton.addEventListener("click", async () => {
   });
 
   crawlInProgress = true;
+  currentRunStatus = "running";
   analyzeButton.disabled = true;
   analyzeButton.textContent = developmentMode
     ? "Running tech discovery..."
@@ -404,6 +526,11 @@ analyzeButton.addEventListener("click", async () => {
   setResultTab(developmentMode ? "tech" : "crawl");
   architecturePromptSection.hidden = true;
   architecturePromptText.value = "";
+
+  await persistRunState("running", null, {
+    mode: developmentMode ? "development" : "full",
+    startedAt: Date.now()
+  });
 
   await Promise.all([
     chrome.storage.local.set({
@@ -446,7 +573,19 @@ analyzeButton.addEventListener("click", async () => {
     crawlResultsEl.innerHTML = `<p class="status">Execution failed: ${error.message}</p>`;
     techResultsEl.innerHTML = `<p class="status">Execution failed: ${error.message}</p>`;
     crawlInProgress = false;
-    analyzeButton.textContent = "Start Discovery";
+    currentRunStatus = "completed";
+    analyzeButton.textContent = "Execute new discovery";
+    analyzeButton.disabled = false;
+    await persistRunState(
+      "completed",
+      {
+        mode: developmentMode ? "development" : "crawl",
+        error: error.message
+      },
+      {
+        completedAt: Date.now()
+      }
+    );
     updateCrawlUiState();
   }
 });
@@ -464,7 +603,14 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 
   crawlInProgress = false;
-  analyzeButton.textContent = "Start Discovery";
+  currentRunStatus = "completed";
+  analyzeButton.textContent = "Execute new discovery";
+  analyzeButton.disabled = false;
+  persistRunState("completed", message.data, {
+    completedAt: Date.now()
+  }).catch((error) => {
+    console.error("[Amplitude Lens] Failed to persist completed discovery state", error);
+  });
   updateCrawlUiState();
 });
 
