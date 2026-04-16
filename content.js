@@ -26,6 +26,82 @@
     await Promise.all(writes);
   }
 
+  function ensureToastStyles() {
+    const styleId = "amplitude-lens-toast-style";
+    if (document.getElementById(styleId)) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      .amplitude-lens-toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        max-width: 360px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid #5865f2;
+        background: #0f172a;
+        color: #f8fafc;
+        box-shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+        z-index: 2147483647;
+        transform: translateX(120%);
+        opacity: 0;
+        transition: transform 280ms ease, opacity 280ms ease;
+      }
+
+      .amplitude-lens-toast--show {
+        transform: translateX(0);
+        opacity: 1;
+      }
+
+      .amplitude-lens-toast--error {
+        border-color: #f43f5e;
+      }
+
+      .amplitude-lens-toast--success {
+        border-color: #22c55e;
+      }
+    `;
+    document.documentElement.appendChild(style);
+  }
+
+  function showCompletionToast({ message, isError }) {
+    ensureToastStyles();
+
+    const existing = document.getElementById("amplitude-lens-toast");
+    if (existing) {
+      existing.remove();
+    }
+
+    const toast = document.createElement("div");
+    toast.id = "amplitude-lens-toast";
+    toast.className = `amplitude-lens-toast ${
+      isError ? "amplitude-lens-toast--error" : "amplitude-lens-toast--success"
+    }`;
+    toast.textContent = message;
+    document.documentElement.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.classList.add("amplitude-lens-toast--show");
+    });
+
+    setTimeout(() => {
+      toast.classList.remove("amplitude-lens-toast--show");
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 320);
+    }, 5000);
+  }
+
   function sendRuntimeMessage(message) {
     return new Promise((resolve) => {
       chrome.runtime.sendMessage(message, (response) => {
@@ -498,16 +574,40 @@
       architecturePrompt = techStackOutput.architecturePrompt;
     } else {
       console.log(
-        "[Amplitude Lens] About to call orchestrator with crawled page payload",
+        "[Amplitude Lens] About to run growth ops orchestration and tech stack discovery",
         crawledPagePayload
       );
 
-      crawlAnalysis = await globalThis.AMPLITUDE_LENS_ORCHESTRATOR.run({
-        pageData: crawledPagePayload,
-        model: selectedClaudeModel,
-        crawlMode,
-        providedTaxonomyCsv
-      });
+      const [growthOpsResult, techStackResult] = await Promise.allSettled([
+        globalThis.AMPLITUDE_LENS_ORCHESTRATOR.run({
+          pageData: crawledPagePayload,
+          model: selectedClaudeModel,
+          crawlMode,
+          providedTaxonomyCsv
+        }),
+        detectTechStack(pageData.url)
+      ]);
+
+      if (growthOpsResult.status === "rejected") {
+        throw growthOpsResult.reason;
+      }
+
+      crawlAnalysis = growthOpsResult.value;
+
+      if (techStackResult.status === "fulfilled") {
+        techStackDiscovery = techStackResult.value.stackFingerprint;
+        architecturePrompt = techStackResult.value.architecturePrompt;
+      } else {
+        const techErrorMessage =
+          techStackResult.reason && techStackResult.reason.message
+            ? techStackResult.reason.message
+            : String(techStackResult.reason || "Unknown tech stack discovery error");
+        console.error(
+          "[Amplitude Lens] Tech stack discovery failed while growth ops succeeded",
+          techStackResult.reason
+        );
+        techStackDiscovery = { error: techErrorMessage };
+      }
     }
 
     const finalData = {
@@ -516,6 +616,11 @@
       techStackDiscovery,
       architecturePrompt
     };
+    const completedWithErrors = Boolean(
+      finalData.error ||
+      (finalData.crawlAnalysis && finalData.crawlAnalysis.error) ||
+      (finalData.techStackDiscovery && finalData.techStackDiscovery.error)
+    );
 
     console.log(
       "[Amplitude Lens] Execution finished; sending analysis to Chrome runtime",
@@ -525,6 +630,22 @@
     await persistDiscoveryStatus("completed", finalData, {
       completedAt: Date.now()
     });
+
+    if (developmentMode) {
+      showCompletionToast({
+        isError: completedWithErrors,
+        message: completedWithErrors
+          ? "Tech stack discovery finished with errors"
+          : "Tech stack discovery finished succesfully!!"
+      });
+    } else {
+      showCompletionToast({
+        isError: completedWithErrors,
+        message: completedWithErrors
+          ? "Growth ops and tech stack discovery finished with errors"
+          : "Growth ops and tech stack discovery finished succesfully!!"
+      });
+    }
 
     chrome.runtime.sendMessage({
       type: "PAGE_ANALYSIS",
@@ -536,6 +657,10 @@
     };
     await persistDiscoveryStatus("completed", errorData, {
       completedAt: Date.now()
+    });
+    showCompletionToast({
+      isError: true,
+      message: "Growth ops and tech stack discovery finished with errors"
     });
     chrome.runtime.sendMessage({
       type: "PAGE_ANALYSIS",
