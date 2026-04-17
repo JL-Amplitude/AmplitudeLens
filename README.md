@@ -1,19 +1,21 @@
-# AmplitudeLens
+# Amplitude AI Lens
+
 AI-powered product analytics discovery assistant. Chrome extension to crawl a customer site and generate a proper tracking plan demo-wise.
 
-**What it does**
+## What it does?
 
-1. **On any site**
-   - Infers product flows
-   - Suggests tracking plan
-   - Identifies growth opportunities
-2. **One-click export to demo narrative**
+Amplitude AI Lens is a Chrome extension that runs directly on a customer's live product experience. In one flow, it captures real page context (including authenticated, client-side signals that typical scanners miss), runs structured AI analysis to surface growth opportunities and supporting narrative, and optionally enriches the picture with tech stack discovery plus an exportable architecture prompt for follow-up work in tools like Glean. It's designed for fast, credible discovery during live calls-turning "what we saw on the site" into actionable, shareable outputs without waiting on backend-heavy workflows.
 
-**Stack:** Browser extension + Claude API + Amplitude MCP
+## Why it matters?
+
+For revenue and product leaders, the bottleneck in enterprise analytics isn't "more dashboards"-it's speed to insight and confidence in the story. This extension compresses discovery time by meeting customers where they already work (the browser), grounding recommendations in observed behavior rather than assumptions, and producing artifacts teams can immediately reuse in demos, follow-ups, and internal alignment. That means shorter sales cycles, sharper positioning, and a clearer bridge from "interesting website" to "measurable outcomes with Amplitude."
+
+**Stack:** Browser extension + Claude API + Claude Skill + Amplitude MCP + Enthec Tech fingerprints
 
 **Use case:** Live during discovery/demo
 
 ## Icons
+
 The extension uses the following icons:
 
 - `icon16` — pinned toolbar button
@@ -22,63 +24,70 @@ The extension uses the following icons:
 - `icon128` — Chrome Web Store listing
 
 ## Architecture Flow
+
 AmplitudeLens follows a simple client-orchestrator-analysis pipeline to inspect a page, run AI reasoning, and return actionable output to the popup UI.
 
-1. **Chrome Extension**  
-   The user starts a crawl from the popup.
-2. **Extract page/app context**  
-   A content script gathers contextual signals from the current page (URL, title, links, forms, and interaction elements).
-3. **POST to Backend Orchestrator**  
-   The extension sends the collected context as a JSON payload to the selected backend endpoint.
-4. **Backend runs Claude Prompt Chain**  
-   The backend executes a sequence of Claude prompts to interpret product behavior, infer tracking opportunities, and identify likely critical paths.
-5. **Aggregate Structured Results**  
-   Backend outputs are normalized into a structured analysis object.
-6. **Return JSON to Extension UI**  
-   The final JSON response is sent back to the extension and rendered in the popup for review.
+1. **Chrome Extension**
+  The user starts a crawl from the popup.
+2. **Extract page/app context**
+  A content script gathers contextual signals from the current page (URL, title, links, forms, and interaction elements).
+3. **POST to Backend Orchestrator**
+  The extension sends the collected context as a JSON payload to the selected backend endpoint.
+4. **Backend runs Claude Prompt Chain**
+  The backend executes a sequence of Claude prompts to interpret product behavior, infer tracking opportunities, and identify likely critical paths.
+5. **Aggregate Structured Results**
+  Backend outputs are normalized into a structured analysis object.
+6. **Return JSON to Extension UI**
+  The final JSON response is sent back to the extension and rendered in the popup for review.
 
 ## Prompts Execution Flow
+
 The prompts should not run independently. They are chained logically because later prompts depend on outputs from earlier ones.
 
-1. **Product Analysis Prompt**  
-   ↓
-2. **Tracking Plan Prompt**  
-   ↓
-3. **Growth Opportunities Prompt**  
-   ↓
+1. **Product Analysis Prompt**
+  ↓
+2. **Tracking Plan Prompt**
+  ↓
+3. **Growth Opportunities Prompt**
+  ↓
 4. **Demo Storyline Prompt**
 
 ## Architecture stack discovery
+
 AmplitudeLens enriches tech stack discovery with Enthec WebAppAnalyzer technology fingerprints bundled inside the extension.
 
 - **Pattern source**  
-  Technology definitions are fetched from `enthec/webappanalyzer` and merged at build time by `scripts/update-stack-technologies.mjs`.
+Technology definitions are fetched from `enthec/webappanalyzer` and merged at build time by `scripts/update-stack-technologies.mjs`.
 - **Bundled for reliability**  
-  The merged dataset is saved as `resources/enthec/technologies.json`, so detection runs offline and avoids runtime CORS/network issues.
+The merged dataset is saved as `resources/enthec/technologies.json`, so detection runs offline and avoids runtime CORS/network issues.
 - **Runtime matching**  
-  During discovery mode, the extension evaluates Enthec patterns against the live page URL, response headers, script sources, DOM HTML, meta tags, and runtime globals.
+During discovery mode, the extension evaluates Enthec patterns against the live page URL, response headers, script sources, DOM HTML, meta tags, and runtime globals.
 - **Consolidated output**  
-  Matches are grouped into a stack fingerprint and used to generate the architecture prompt that can be copied or downloaded for Glean.
+Matches are grouped into a stack fingerprint and used to generate the architecture prompt that can be copied or downloaded for Glean.
 
 ## Available Claude Skills
 
 ### amplitude-growth-consultant
+
 The `amplitude-growth-consultant` skill performs the following workflow:
 
 - **URL only**  
-  Automatically invokes the `taxonomy-discovery` skill first, then runs the full analysis.
+Automatically invokes the `taxonomy-discovery` skill first, then runs the full analysis.
 - **URL + CSV taxonomy**  
-  Jumps straight to analysis using the provided events.
+Jumps straight to analysis using the provided events.
 - **Input modes**  
-  Three input modes are supported:
+Three input modes are supported:
 
-| Mode | How to trigger | Turnaround | What happens |
-| --- | --- | --- | --- |
-| provided | URL + CSV taxonomy | Instant | Skips to analysis directly |
-| quick (default) | URL only, or "quick/fast/brief" | < 60s | Infers 10–15 events inline from web research |
-| deep | "deep/full/detailed/use turbodemo" | 5–10 min | Invokes turbodemo-taxonomy for a full CSV |
+
+| Mode            | How to trigger                     | Turnaround | What happens                                 |
+| --------------- | ---------------------------------- | ---------- | -------------------------------------------- |
+| provided        | URL + CSV taxonomy                 | Instant    | Skips to analysis directly                   |
+| quick (default) | URL only, or "quick/fast/brief"    | < 60s      | Infers 10–15 events inline from web research |
+| deep            | "deep/full/detailed/use turbodemo" | 5–10 min   | Invokes turbodemo-taxonomy for a full CSV    |
+
+
 - **Output format**  
-  Returns pure JSON designed for downstream consumption (for example this Chrome extension), with these fields:
+Returns pure JSON designed for downstream consumption (for example this Chrome extension), with these fields:
   - `intro` — executive summary for display in a UI
   - `industry` + `taxonomy_source` — metadata
   - `friction_points` — 4–6 items with severity, evidence tied to taxonomy events, and industry benchmarks
@@ -90,28 +99,29 @@ The `amplitude-growth-consultant` skill performs the following workflow:
 ### Why Use a Backend Instead of Calling Claude Directly?
 
 - **Security**  
-  Never expose API keys in the extension frontend.
+Never expose API keys in the extension frontend.
 - **Prompt Orchestration**  
-  Run multiple prompts sequentially or in parallel, and manage dependencies between prompts.
+Run multiple prompts sequentially or in parallel, and manage dependencies between prompts.
 - **Caching / Logging**  
-  Cache previous analyses and track latency or failures.
+Cache previous analyses and track latency or failures.
 - **Future Extensibility**  
-  Add integrations later (for example Salesforce, MCP, or Slack) without changing the extension architecture.
+Add integrations later (for example Salesforce, MCP, or Slack) without changing the extension architecture.
 
 ### Why does Claude helper call `background.js` instead of fetching directly?
 
 - **Correct extension network context**  
-  Prompt execution runs from scripts injected into the active tab, and direct cross-origin fetches to Anthropic can fail in that context with generic browser errors.
+Prompt execution runs from scripts injected into the active tab, and direct cross-origin fetches to Anthropic can fail in that context with generic browser errors.
 - **Reliability for cross-origin requests**  
-  Routing Claude API calls through `background.js` uses the extension service worker as the request context, which is more reliable for external API communication.
+Routing Claude API calls through `background.js` uses the extension service worker as the request context, which is more reliable for external API communication.
 - **Better error visibility**  
-  The background relay returns structured status/error payloads, making debugging easier than handling opaque `Failed to fetch` errors in content-script execution.
+The background relay returns structured status/error payloads, making debugging easier than handling opaque `Failed to fetch` errors in content-script execution.
 
 ### Why is the `anthropic-dangerous-direct-browser-access` header included?
 
 - **Required for browser-context requests**  
-  Anthropic enforces an additional safeguard for requests initiated from browser/extension contexts (including service-worker relays in extensions).
+Anthropic enforces an additional safeguard for requests initiated from browser/extension contexts (including service-worker relays in extensions).
 - **Prevents authentication errors**  
-  Without this header, Anthropic can reject the request with a `401 authentication_error` indicating that browser access requires explicit acknowledgment.
+Without this header, Anthropic can reject the request with a `401 authentication_error` indicating that browser access requires explicit acknowledgment.
 - **Explicit intent signal**  
-  The header makes it explicit that the request is intentionally executed from a browser-based client rather than a traditional server-to-server backend.
+The header makes it explicit that the request is intentionally executed from a browser-based client rather than a traditional server-to-server backend.
+
